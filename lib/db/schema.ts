@@ -1,10 +1,11 @@
 import { relations } from 'drizzle-orm'
-import { check, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import { boolean, check, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 
 export const profiles = pgTable('profiles', {
   id: uuid('id').primaryKey(),
   name: text('name').notNull(),
+  username: text('username').unique(),
   avatarUrl: text('avatar_url'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 })
@@ -14,6 +15,8 @@ export const groups = pgTable('groups', {
   name: text('name').notNull(),
   description: text('description'),
   inviteCode: text('invite_code').notNull().unique(),
+  accessPin: text('access_pin'),
+  isPublic: boolean('is_public').default(false).notNull(),
   ownerId: uuid('owner_id').notNull().references(() => profiles.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 })
@@ -39,6 +42,18 @@ export const movies = pgTable('movies', {
   genres: jsonb('genres').$type<string[]>().default([]).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 })
+
+export const profileFavoriteMovies = pgTable('profile_favorite_movies', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => profiles.id, { onDelete: 'cascade' }),
+  movieId: uuid('movie_id').notNull().references(() => movies.id, { onDelete: 'cascade' }),
+  position: integer('position').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  userMovieUnique: uniqueIndex('profile_favorite_movies_user_movie_unique').on(table.userId, table.movieId),
+  userPositionUnique: uniqueIndex('profile_favorite_movies_user_position_unique').on(table.userId, table.position),
+  positionCheck: check('profile_favorite_movies_position_check', sql`${table.position} >= 1 and ${table.position} <= 5`)
+}))
 
 export const recommendations = pgTable('recommendations', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -73,6 +88,7 @@ export const comments = pgTable('comments', {
 
 export const profilesRelations = relations(profiles, ({ many }) => ({
   memberships: many(groupMembers),
+  favoriteMovies: many(profileFavoriteMovies),
   recommendations: many(recommendations),
   ratings: many(ratings),
   comments: many(comments)
@@ -90,7 +106,13 @@ export const groupMembersRelations = relations(groupMembers, ({ one }) => ({
 }))
 
 export const moviesRelations = relations(movies, ({ many }) => ({
+  favoriteForProfiles: many(profileFavoriteMovies),
   recommendations: many(recommendations)
+}))
+
+export const profileFavoriteMoviesRelations = relations(profileFavoriteMovies, ({ one }) => ({
+  user: one(profiles, { fields: [profileFavoriteMovies.userId], references: [profiles.id] }),
+  movie: one(movies, { fields: [profileFavoriteMovies.movieId], references: [movies.id] })
 }))
 
 export const recommendationsRelations = relations(recommendations, ({ one, many }) => ({

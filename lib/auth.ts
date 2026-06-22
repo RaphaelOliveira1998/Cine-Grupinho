@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db'
-import { profiles } from '@/lib/db/schema'
+import { profileFavoriteMovies, profiles } from '@/lib/db/schema'
 import { createClient } from '@/lib/supabase/server'
 
 export async function getCurrentUser() {
@@ -15,6 +15,14 @@ export async function requireUser() {
   if (!user) redirect('/login')
   await ensureProfile(user.id, user.user_metadata?.name || user.email?.split('@')[0] || 'Usuário')
   return user
+}
+
+export async function requireCompletedProfile() {
+  const user = await requireUser()
+  const profile = await db.query.profiles.findFirst({ where: eq(profiles.id, user.id) })
+  const favorites = await db.query.profileFavoriteMovies.findMany({ where: eq(profileFavoriteMovies.userId, user.id), limit: 5 })
+  if (!profile?.username || favorites.length < 5) redirect('/profile/setup')
+  return { user, profile }
 }
 
 export async function ensureProfile(id: string, name: string, avatarUrl?: string | null) {

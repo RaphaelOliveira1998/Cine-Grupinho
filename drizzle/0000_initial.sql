@@ -1,6 +1,7 @@
 create table if not exists profiles (
   id uuid primary key,
   name text not null,
+  username text unique,
   avatar_url text,
   created_at timestamptz not null default now()
 );
@@ -10,6 +11,8 @@ create table if not exists groups (
   name text not null,
   description text,
   invite_code text not null unique,
+  access_pin text,
+  is_public boolean not null default false,
   owner_id uuid not null references profiles(id) on delete cascade,
   created_at timestamptz not null default now()
 );
@@ -35,6 +38,17 @@ create table if not exists movies (
   genres jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now()
 );
+
+create table if not exists profile_favorite_movies (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles(id) on delete cascade,
+  movie_id uuid not null references movies(id) on delete cascade,
+  position integer not null check (position >= 1 and position <= 5),
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists profile_favorite_movies_user_movie_unique on profile_favorite_movies(user_id, movie_id);
+create unique index if not exists profile_favorite_movies_user_position_unique on profile_favorite_movies(user_id, position);
 
 create table if not exists recommendations (
   id uuid primary key default gen_random_uuid(),

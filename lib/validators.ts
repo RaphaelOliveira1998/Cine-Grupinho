@@ -11,11 +11,19 @@ export const registerSchema = loginSchema.extend({
 
 export const groupSchema = z.object({
   name: z.string().min(2).max(80),
-  description: z.string().max(240).optional()
+  description: z.string().max(240).optional(),
+  isPublic: z.coerce.boolean().default(false),
+  accessPin: z.string().trim().min(4).max(12).optional().or(z.literal(''))
+})
+
+export const updateGroupSchema = groupSchema.extend({
+  groupId: z.string().uuid(),
+  rotateInviteCode: z.coerce.boolean().default(false)
 })
 
 export const joinGroupSchema = z.object({
-  inviteCode: z.string().min(4).max(16).transform((value) => value.trim().toUpperCase())
+  inviteCode: z.string().min(4).max(16).transform((value) => value.trim().toUpperCase()),
+  accessPin: z.string().trim().max(12).optional().or(z.literal(''))
 })
 
 export const ratingSchema = z.object({
@@ -33,4 +41,11 @@ export const searchSchema = z.object({
 export const recommendMovieSchema = z.object({
   groupId: z.string().uuid(),
   tmdbId: z.coerce.number().int().positive()
+})
+
+export const profileSchema = z.object({
+  name: z.string().min(2).max(80),
+  username: z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,24}$/),
+  avatarUrl: z.string().url().max(500).optional().or(z.literal('')),
+  favoriteTmdbIds: z.array(z.coerce.number().int().positive()).min(5).max(5)
 })

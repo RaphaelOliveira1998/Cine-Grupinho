@@ -4,11 +4,11 @@ import { and, eq, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db'
-import { groupMembers, groups, movies, ratings, comments, recommendations } from '@/lib/db/schema'
+import { comments, groupMembers, groups, movies, profileFavoriteMovies, profiles, ratings, recommendations } from '@/lib/db/schema'
 import { createInviteCode } from '@/lib/invite'
 import { getMovieDetails } from '@/lib/tmdb'
 import { requireUser } from '@/lib/auth'
-import { commentSchema, groupSchema, joinGroupSchema, ratingSchema, recommendMovieSchema } from '@/lib/validators'
+import { commentSchema, groupSchema, joinGroupSchema, profileSchema, ratingSchema, recommendMovieSchema, updateGroupSchema } from '@/lib/validators'
 import { isGroupMember } from '@/lib/data'
 
 function value(formData: FormData, key: string) {
@@ -16,40 +16,22 @@ function value(formData: FormData, key: string) {
   return typeof raw === 'string' ? raw : ''
 }
 
-export async function createGroupAction(formData: FormData) {
-  const user = await requireUser()
-  const parsed = groupSchema.parse({ name: value(formData, 'name'), description: value(formData, 'description') })
+function values(formData: FormData, key: string) {
+  return formData.getAll(key).map((item) => String(item))
+}
+
+async function uniqueInviteCode() {
   let inviteCode = createInviteCode()
-  for (let attempt = 0; attempt < 5; attempt += 1) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
     const existing = await db.query.groups.findFirst({ where: eq(groups.inviteCode, inviteCode) })
-    if (!existing) break
+    if (!existing) return inviteCode
     inviteCode = createInviteCode()
   }
-  const [group] = await db.insert(groups).values({
-    name: parsed.name,
-    description: parsed.description || null,
-    inviteCode,
-    ownerId: user.id
-  }).returning()
-  await db.insert(groupMembers).values({ groupId: group.id, userId: user.id, role: 'owner' })
-  redirect(`/groups/${group.id}`)
+  return inviteCode
 }
 
-export async function joinGroupAction(formData: FormData) {
-  const user = await requireUser()
-  const parsed = joinGroupSchema.parse({ inviteCode: value(formData, 'inviteCode') })
-  const group = await db.query.groups.findFirst({ where: eq(groups.inviteCode, parsed.inviteCode) })
-  if (!group) redirect('/groups/join?error=invalid')
-  await db.insert(groupMembers).values({ groupId: group.id, userId: user.id, role: 'member' }).onConflictDoNothing()
-  redirect(`/groups/${group.id}`)
-}
-
-export async function recommendMovieAction(formData: FormData) {
-  const user = await requireUser()
-  const parsed = recommendMovieSchema.parse({ groupId: value(formData, 'groupId'), tmdbId: value(formData, 'tmdbId') })
-  const member = await isGroupMember(parsed.groupId, user.id)
-  if (!member) throw new Error('Acesso negado')
-  const details = await getMovieDetails(parsed.tmdbId)
+async function upsertMovieFromTmdb(tmdbId: number) {
+  const details = await getMovieDetails(tmdbId)
   const [movie] = await db.insert(movies).values({
     tmdbId: details.id,
     title: details.title,
@@ -69,6 +51,95 @@ export async function recommendMovieAction(formData: FormData) {
       genres: details.genres?.map((genre) => genre.name) || []
     }
   }).returning()
+  return movie
+}
+
+export async function updateProfileAction(formData: FormData) {
+  const user = await requireUser()
+  const parsed = profileSchema.parse({
+    name: value(formData, 'name'),
+    username: value(formData, 'username'),
+    avatarUrl: value(formData, 'avatarUrl'),
+    favoriteTmdbIds: values(formData, 'favoriteTmdbIds')
+  })
+  await db.update(profiles).set({
+    name: parsed.name,
+    username: parsed.username,
+    avatarUrl: parsed.avatarUrl || null
+  }).where(eq(profiles.id, user.id))
+  await db.delete(profileFavoriteMovies).where(eq(profileFavoriteMovies.userId, user.id))
+  const favoriteMovies = await Promise.all(parsed.favoriteTmdbIds.map((tmdbId) => upsertMovieFromTmdb(tmdbId)))
+  await db.insert(profileFavoriteMovies).values(favoriteMovies.map((movie, index) => ({
+    userId: user.id,
+    movieId: movie.id,
+    position: index + 1
+  })))
+  revalidatePath('/dashboard')
+  revalidatePath(`/profile/${parsed.username}`)
+  redirect('/dashboard')
+}
+
+export async function createGroupAction(formData: FormData) {
+  const user = await requireUser()
+  const parsed = groupSchema.parse({
+    name: value(formData, 'name'),
+    description: value(formData, 'description'),
+    isPublic: formData.get('isPublic') === 'on',
+    accessPin: value(formData, 'accessPin')
+  })
+  const inviteCode = await uniqueInviteCode()
+  const [group] = await db.insert(groups).values({
+    name: parsed.name,
+    description: parsed.description || null,
+    inviteCode,
+    accessPin: parsed.isPublic ? null : parsed.accessPin || null,
+    isPublic: parsed.isPublic,
+    ownerId: user.id
+  }).returning()
+  await db.insert(groupMembers).values({ groupId: group.id, userId: user.id, role: 'owner' })
+  redirect(`/groups/${group.id}`)
+}
+
+export async function updateGroupAction(formData: FormData) {
+  const user = await requireUser()
+  const parsed = updateGroupSchema.parse({
+    groupId: value(formData, 'groupId'),
+    name: value(formData, 'name'),
+    description: value(formData, 'description'),
+    isPublic: formData.get('isPublic') === 'on',
+    accessPin: value(formData, 'accessPin'),
+    rotateInviteCode: formData.get('rotateInviteCode') === 'on'
+  })
+  const group = await db.query.groups.findFirst({ where: eq(groups.id, parsed.groupId) })
+  if (!group || group.ownerId !== user.id) throw new Error('Acesso negado')
+  const inviteCode = parsed.rotateInviteCode ? await uniqueInviteCode() : group.inviteCode
+  await db.update(groups).set({
+    name: parsed.name,
+    description: parsed.description || null,
+    isPublic: parsed.isPublic,
+    accessPin: parsed.isPublic ? null : parsed.accessPin || group.accessPin || null,
+    inviteCode
+  }).where(eq(groups.id, parsed.groupId))
+  revalidatePath(`/groups/${parsed.groupId}`)
+  redirect(`/groups/${parsed.groupId}`)
+}
+
+export async function joinGroupAction(formData: FormData) {
+  const user = await requireUser()
+  const parsed = joinGroupSchema.parse({ inviteCode: value(formData, 'inviteCode'), accessPin: value(formData, 'accessPin') })
+  const group = await db.query.groups.findFirst({ where: eq(groups.inviteCode, parsed.inviteCode) })
+  if (!group) redirect('/groups/join?error=invalid')
+  if (!group.isPublic && group.accessPin && group.accessPin !== parsed.accessPin) redirect('/groups/join?error=pin')
+  await db.insert(groupMembers).values({ groupId: group.id, userId: user.id, role: 'member' }).onConflictDoNothing()
+  redirect(`/groups/${group.id}`)
+}
+
+export async function recommendMovieAction(formData: FormData) {
+  const user = await requireUser()
+  const parsed = recommendMovieSchema.parse({ groupId: value(formData, 'groupId'), tmdbId: value(formData, 'tmdbId') })
+  const member = await isGroupMember(parsed.groupId, user.id)
+  if (!member) throw new Error('Acesso negado')
+  const movie = await upsertMovieFromTmdb(parsed.tmdbId)
   const [recommendation] = await db.insert(recommendations).values({
     groupId: parsed.groupId,
     movieId: movie.id,
