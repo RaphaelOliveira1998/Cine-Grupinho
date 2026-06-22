@@ -1,0 +1,18 @@
+@import 'tailwindcss';
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  min-height: 100vh;
+  background: #050816;
+  color: #f8fafc;
+}
+
+button,
+a,
+input,
+textarea {
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, opacity 150ms ease;
+}
