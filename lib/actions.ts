@@ -91,11 +91,13 @@ export async function updateProfileAction(formData: FormData) {
   }).where(eq(profiles.id, user.id))
   await db.delete(profileFavoriteMovies).where(eq(profileFavoriteMovies.userId, user.id))
   const favoriteMovies = await Promise.all(parsed.favoriteTmdbIds.map((tmdbId) => upsertMovieFromTmdb(tmdbId)))
-  await db.insert(profileFavoriteMovies).values(favoriteMovies.map((movie, index) => ({
-    userId: user.id,
-    movieId: movie.id,
-    position: index + 1
-  })))
+  if (favoriteMovies.length > 0) {
+    await db.insert(profileFavoriteMovies).values(favoriteMovies.map((movie, index) => ({
+      userId: user.id,
+      movieId: movie.id,
+      position: index + 1
+    })))
+  }
   revalidatePath('/dashboard')
   revalidatePath(`/profile/${parsed.username}`)
   redirect('/dashboard')

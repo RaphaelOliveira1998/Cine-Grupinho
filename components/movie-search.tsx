@@ -21,11 +21,13 @@ export function MovieSearch({ groupId }: { groupId: string }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [searchedQuery, setSearchedQuery] = useState('')
+  const [visibleCount, setVisibleCount] = useState(5)
 
   async function search() {
     setLoading(true)
     setError('')
     setSearchedQuery(query)
+    setVisibleCount(5)
     const response = await fetch(`/api/tmdb/search?q=${encodeURIComponent(query)}`)
     setLoading(false)
     if (!response.ok) {
@@ -35,6 +37,8 @@ export function MovieSearch({ groupId }: { groupId: string }) {
     const data = await response.json()
     setMovies(data.results)
   }
+
+  const visibleMovies = movies.slice(0, visibleCount)
 
   return (
     <section className="space-y-4 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
@@ -49,7 +53,7 @@ export function MovieSearch({ groupId }: { groupId: string }) {
       {error && <p className="text-sm text-red-300">{error}</p>}
       {!error && !loading && searchedQuery && movies.length === 0 && <p className="text-sm text-slate-400">Nenhum resultado para essa busca.</p>}
       <div className="grid gap-3 md:grid-cols-2">
-        {movies.map((movie) => {
+        {visibleMovies.map((movie) => {
           const poster = posterUrl(movie.poster_path)
           return (
             <div key={movie.id} className="flex gap-4 rounded-2xl border border-white/10 bg-black/20 p-3">
@@ -69,6 +73,11 @@ export function MovieSearch({ groupId }: { groupId: string }) {
           )
         })}
       </div>
+      {movies.length > visibleCount && (
+        <div className="flex justify-center">
+          <Button type="button" className="bg-white/10 hover:bg-white/20" onClick={() => setVisibleCount((count) => count + 5)}>Ver mais</Button>
+        </div>
+      )}
     </section>
   )
 }

@@ -16,7 +16,7 @@ export default async function ProfileSetupPage() {
         <div>
           <p className="text-sm uppercase tracking-[0.3em] text-violet-300">Perfil</p>
           <h1 className="mt-2 text-4xl font-bold text-white">Configure seu perfil</h1>
-          <p className="mt-2 max-w-2xl text-slate-400">Antes de entrar no dashboard, defina username, foto e seus 5 filmes favoritos.</p>
+          <p className="mt-2 max-w-2xl text-slate-400">Antes de entrar no dashboard, defina username e foto. Filmes favoritos são opcionais.</p>
         </div>
         <ProfileMoviePicker name={profile?.name || user.email?.split('@')[0] || ''} username={profile?.username || ''} avatarUrl={profile?.avatarUrl || ''} />
       </div>

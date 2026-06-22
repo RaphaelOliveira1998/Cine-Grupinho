@@ -47,5 +47,5 @@ export const profileSchema = z.object({
   name: z.string().min(2).max(80),
   username: z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,24}$/),
   avatarUrl: z.string().url().max(500).optional().or(z.literal('')),
-  favoriteTmdbIds: z.array(z.coerce.number().int().positive()).min(5).max(5)
+  favoriteTmdbIds: z.array(z.coerce.number().int().positive()).max(5)
 })
