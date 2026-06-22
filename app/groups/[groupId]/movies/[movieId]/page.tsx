@@ -4,7 +4,7 @@ import { Button } from '@/components/button'
 import { Textarea } from '@/components/input'
 import { AppShell } from '@/components/shell'
 import { addCommentAction, rateMovieAction } from '@/lib/actions'
-import { requireUser } from '@/lib/auth'
+import { requireCompletedProfile } from '@/lib/auth'
 import { getGroupForMember, getRecommendationComments, getRecommendationDetail } from '@/lib/data'
 import { formatDate, posterUrl } from '@/lib/utils'
 
@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function MoviePage({ params }: { params: Promise<{ groupId: string; movieId: string }> }) {
   const { groupId, movieId } = await params
-  const user = await requireUser()
+  const { user } = await requireCompletedProfile()
   const group = await getGroupForMember(groupId, user.id)
   if (!group) notFound()
   const movie = await getRecommendationDetail(groupId, movieId, user.id)
@@ -31,7 +31,7 @@ export default async function MoviePage({ params }: { params: Promise<{ groupId:
           <div>
             <a href={`/groups/${group.id}`} className="text-sm text-violet-300 hover:text-violet-200">← {group.name}</a>
             <h1 className="mt-3 text-5xl font-bold text-white">{movie.title}</h1>
-            <p className="mt-2 text-slate-400">{movie.originalTitle} · {movie.releaseDate || 'Sem data'} · recomendado por {movie.recommendedByName}</p>
+            <p className="mt-2 text-slate-400">{movie.originalTitle} · {movie.releaseDate || 'Sem data'} · recomendado por <a href={movie.recommendedByUsername ? `/profile/${movie.recommendedByUsername}` : '#'} className="text-violet-300 hover:text-violet-200">{movie.recommendedByName}</a></p>
           </div>
           <div className="flex flex-wrap gap-2">
             {movie.genres.map((genre) => <span key={genre} className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300">{genre}</span>)}
@@ -71,7 +71,7 @@ export default async function MoviePage({ params }: { params: Promise<{ groupId:
               {comments.map((comment) => (
                 <div key={comment.id} className="rounded-2xl bg-black/20 p-4">
                   <div className="flex justify-between gap-3 text-sm">
-                    <span className="font-medium text-white">{comment.authorName}</span>
+                    <a href={comment.authorUsername ? `/profile/${comment.authorUsername}` : '#'} className="font-medium text-white hover:text-violet-200">{comment.authorName}</a>
                     <span className="text-slate-500">{formatDate(comment.createdAt.toISOString())}</span>
                   </div>
                   <p className="mt-2 whitespace-pre-wrap text-slate-300">{comment.body}</p>

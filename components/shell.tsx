@@ -1,10 +1,14 @@
 import Link from 'next/link'
-import { Film } from 'lucide-react'
+import { Film, User } from 'lucide-react'
+import { eq } from 'drizzle-orm'
 import { createClient } from '@/lib/supabase/server'
+import { db } from '@/lib/db'
+import { profiles } from '@/lib/db/schema'
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
   const { data } = await supabase.auth.getUser()
+  const profile = data.user ? await db.query.profiles.findFirst({ where: eq(profiles.id, data.user.id) }) : null
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#312e81,transparent_35%),#050816]">
       <header className="border-b border-white/10 bg-black/20 backdrop-blur">
@@ -14,7 +18,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             Cine Grupinho
           </Link>
           <div className="flex items-center gap-3 text-sm text-slate-300">
-            <span className="hidden sm:block">{data.user?.email}</span>
+            {profile?.username && <Link href={`/profile/${profile.username}`} className="hidden items-center gap-2 rounded-xl border border-white/10 px-3 py-2 hover:bg-white/10 sm:flex"><User size={16} /> @{profile.username}</Link>}
+            <span className="hidden md:block">{data.user?.email}</span>
             <form action="/auth/signout" method="post">
               <button className="rounded-xl border border-white/10 px-3 py-2 hover:bg-white/10">Sair</button>
             </form>

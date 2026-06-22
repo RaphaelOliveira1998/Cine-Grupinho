@@ -1,14 +1,14 @@
 import { LinkButton } from '@/components/button'
 import { MovieCarousel } from '@/components/movie-carousel'
 import { AppShell } from '@/components/shell'
-import { requireUser } from '@/lib/auth'
+import { requireCompletedProfile } from '@/lib/auth'
 import { getMyGroups } from '@/lib/data'
 import { getTrendingMovies } from '@/lib/tmdb'
 
 export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
-  const user = await requireUser()
+  const { user } = await requireCompletedProfile()
   const [groups, trendingMovies] = await Promise.all([getMyGroups(user.id), getTrendingMovies()])
   return (
     <AppShell>
@@ -36,7 +36,7 @@ export default async function DashboardPage() {
             </div>
             <div className="mt-6 flex justify-between text-sm text-slate-400">
               <span>{group.memberCount} membros</span>
-              <span>{group.inviteCode}</span>
+              <span>{group.isPublic ? 'Público' : 'Privado'} · {group.inviteCode}</span>
             </div>
           </a>
         ))}
