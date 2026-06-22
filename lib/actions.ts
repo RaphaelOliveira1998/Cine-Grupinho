@@ -10,6 +10,8 @@ import { getMovieDetails } from '@/lib/tmdb'
 import { requireUser } from '@/lib/auth'
 import { commentSchema, groupSchema, joinGroupSchema, profileSchema, ratingSchema, recommendMovieSchema, updateGroupSchema } from '@/lib/validators'
 import { isGroupMember } from '@/lib/data'
+import { avatarFileError, avatarStoragePath, hasAvatarUpload } from '@/lib/avatar'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 function value(formData: FormData, key: string) {
   const raw = formData.get(key)
@@ -28,6 +30,23 @@ async function uniqueInviteCode() {
     inviteCode = createInviteCode()
   }
   return inviteCode
+}
+
+async function uploadAvatar(userId: string, file: File | null) {
+  if (!file || !hasAvatarUpload(file)) return null
+  const error = avatarFileError(file)
+  if (error) throw new Error(error)
+  const supabase = createAdminClient()
+  const bucket = 'avatars'
+  const buckets = await supabase.storage.listBuckets()
+  if (!buckets.data?.some((item) => item.name === bucket)) {
+    const created = await supabase.storage.createBucket(bucket, { public: true, fileSizeLimit: 3145728, allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] })
+    if (created.error) throw new Error(created.error.message)
+  }
+  const path = avatarStoragePath(userId, file)
+  const uploaded = await supabase.storage.from(bucket).upload(path, file, { contentType: file.type, upsert: true })
+  if (uploaded.error) throw new Error(uploaded.error.message)
+  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl
 }
 
 async function upsertMovieFromTmdb(tmdbId: number) {
@@ -56,10 +75,13 @@ async function upsertMovieFromTmdb(tmdbId: number) {
 
 export async function updateProfileAction(formData: FormData) {
   const user = await requireUser()
+  const rawAvatarFile = formData.get('avatarFile')
+  const avatarFile = rawAvatarFile instanceof File ? rawAvatarFile : null
+  const uploadedAvatarUrl = await uploadAvatar(user.id, avatarFile)
   const parsed = profileSchema.parse({
     name: value(formData, 'name'),
     username: value(formData, 'username'),
-    avatarUrl: value(formData, 'avatarUrl'),
+    avatarUrl: uploadedAvatarUrl || value(formData, 'avatarUrl'),
     favoriteTmdbIds: values(formData, 'favoriteTmdbIds')
   })
   await db.update(profiles).set({

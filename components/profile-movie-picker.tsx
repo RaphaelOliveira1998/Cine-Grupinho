@@ -27,10 +27,12 @@ export function ProfileMoviePicker({ name, username, avatarUrl }: ProfileMoviePi
   const [favorites, setFavorites] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [searchedQuery, setSearchedQuery] = useState('')
 
   async function search() {
     setLoading(true)
     setError('')
+    setSearchedQuery(query)
     const response = await fetch(`/api/tmdb/search?q=${encodeURIComponent(query)}`)
     setLoading(false)
     if (!response.ok) {
@@ -55,7 +57,12 @@ export function ProfileMoviePicker({ name, username, avatarUrl }: ProfileMoviePi
       <section className="grid gap-4 rounded-3xl border border-white/10 bg-white/[0.04] p-6 md:grid-cols-3">
         <Input name="name" defaultValue={name} placeholder="Nome" required minLength={2} />
         <Input name="username" defaultValue={username} placeholder="username" required minLength={3} maxLength={24} />
-        <Input name="avatarUrl" defaultValue={avatarUrl} placeholder="URL da foto de perfil" />
+        <label className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-300">
+          <span className="block text-xs uppercase tracking-[0.2em] text-violet-300">Foto</span>
+          <input name="avatarFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="mt-2 block w-full text-sm text-slate-300 file:mr-4 file:rounded-full file:border-0 file:bg-violet-500 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-violet-400" />
+          <span className="mt-2 block text-xs text-slate-500">PNG, JPG, WEBP ou GIF até 3MB.</span>
+        </label>
+        <input type="hidden" name="avatarUrl" value={avatarUrl} />
       </section>
       <section className="space-y-4 rounded-3xl border border-white/10 bg-white/[0.04] p-6">
         <div>
@@ -68,6 +75,7 @@ export function ProfileMoviePicker({ name, username, avatarUrl }: ProfileMoviePi
           <Button type="button" onClick={search} disabled={loading || query.length < 1}>{loading ? 'Buscando...' : 'Buscar'}</Button>
         </div>
         {error && <p className="text-sm text-red-300">{error}</p>}
+        {!error && !loading && searchedQuery && movies.length === 0 && <p className="text-sm text-slate-400">Nenhum resultado para essa busca.</p>}
         <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
           <div className="grid gap-3 md:grid-cols-2">
             {movies.map((movie) => {

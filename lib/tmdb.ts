@@ -80,6 +80,56 @@ const fallbackMovies: FallbackMovie[] = [
     collectionKey: 'matrix'
   },
   {
+    id: 9799,
+    title: 'Velozes e Furiosos',
+    original_title: 'The Fast and the Furious',
+    overview: 'Um policial se infiltra no mundo das corridas de rua para investigar roubos e encontra uma família movida a nitro e decisões ruins.',
+    poster_path: '/gqY0ITBgT7A82poL9jv851qdnIb.jpg',
+    release_date: '2001-06-22',
+    genres: [{ id: 28, name: 'Ação' }, { id: 80, name: 'Crime' }],
+    collectionKey: 'fast-furious'
+  },
+  {
+    id: 584,
+    title: '+ Velozes + Furiosos',
+    original_title: '2 Fast 2 Furious',
+    overview: 'Brian volta às corridas ilegais em Miami para derrubar um criminoso com carros chamativos e bom senso limitado.',
+    poster_path: '/6nDZExrDKIXvSAghsFKVFRVJuSf.jpg',
+    release_date: '2003-06-05',
+    genres: [{ id: 28, name: 'Ação' }, { id: 80, name: 'Crime' }],
+    collectionKey: 'fast-furious'
+  },
+  {
+    id: 9615,
+    title: 'Velozes e Furiosos: Desafio em Tóquio',
+    original_title: 'The Fast and the Furious: Tokyo Drift',
+    overview: 'Um jovem problemático descobre o drift em Tóquio e transforma trânsito em liturgia mecânica.',
+    poster_path: '/cm2ffqb3XovzA5ZSzyN3jnn8qv0.jpg',
+    release_date: '2006-06-03',
+    genres: [{ id: 28, name: 'Ação' }, { id: 80, name: 'Crime' }],
+    collectionKey: 'fast-furious'
+  },
+  {
+    id: 13804,
+    title: 'Velozes e Furiosos 4',
+    original_title: 'Fast & Furious',
+    overview: 'Dom e Brian voltam a acelerar juntos contra um cartel, porque aparentemente delegacias não bastam.',
+    poster_path: '/zvjQPVttJWaCSbzMijyc2x2MLr4.jpg',
+    release_date: '2009-04-02',
+    genres: [{ id: 28, name: 'Ação' }, { id: 80, name: 'Crime' }],
+    collectionKey: 'fast-furious'
+  },
+  {
+    id: 51497,
+    title: 'Velozes & Furiosos 5: Operação Rio',
+    original_title: 'Fast Five',
+    overview: 'No Rio de Janeiro, Dom e Brian planejam um roubo impossível enquanto a gravidade tira folga remunerada.',
+    poster_path: '/l1gF9ZDT9ZJ4fQ7kV8fX4Sydk8p.jpg',
+    release_date: '2011-04-20',
+    genres: [{ id: 28, name: 'Ação' }, { id: 80, name: 'Crime' }],
+    collectionKey: 'fast-furious'
+  },
+  {
     id: 496243,
     title: 'Parasita',
     original_title: '기생충',
@@ -156,6 +206,25 @@ function sortByReleaseDate(movies: TmdbMovie[]) {
   return [...movies].sort((a, b) => String(a.release_date || '9999').localeCompare(String(b.release_date || '9999')))
 }
 
+function editDistance(a: string, b: string) {
+  const previous = Array.from({ length: b.length + 1 }, (_, index) => index)
+  for (let i = 1; i <= a.length; i += 1) {
+    const current = [i]
+    for (let j = 1; j <= b.length; j += 1) {
+      current[j] = Math.min(current[j - 1] + 1, previous[j] + 1, previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
+    }
+    previous.splice(0, previous.length, ...current)
+  }
+  return previous[b.length]
+}
+
+function fallbackMovieMatches(movie: FallbackMovie, term: string) {
+  const haystack = normalize(`${movie.title} ${movie.original_title}`)
+  if (haystack.includes(term) || term.includes(normalize(movie.title))) return true
+  if (term.length < 5) return false
+  return haystack.split(/[^a-z0-9]+/).some((word) => word.length >= 5 && editDistance(word, term) <= 2)
+}
+
 async function tmdbFetch<T>(path: string, params?: Record<string, string>) {
   const key = process.env.TMDB_API_KEY
   if (!key) throw new Error('TMDB_API_KEY não configurada')
@@ -175,11 +244,11 @@ async function tmdbFetch<T>(path: string, params?: Record<string, string>) {
 
 function fallbackSearch(query: string) {
   const term = normalize(query)
-  const matches = fallbackMovies.filter((movie) => normalize(`${movie.title} ${movie.original_title}`).includes(term) || term.includes(normalize(movie.title)))
+  const matches = fallbackMovies.filter((movie) => fallbackMovieMatches(movie, term))
   const collectionKeys = new Set(matches.map((movie) => movie.collectionKey).filter(Boolean))
   const related = fallbackMovies.filter((movie) => movie.collectionKey && collectionKeys.has(movie.collectionKey))
   const results = uniqueMovies([...matches, ...related])
-  return results.length ? sortByReleaseDate(results) : fallbackMovies
+  return results.length ? sortByReleaseDate(results) : []
 }
 
 async function getCollectionMovies(collectionId: number) {
@@ -210,3 +279,4 @@ export async function getTrendingMovies() {
   const data = await tmdbFetch<{ results: TmdbMovie[] }>('/trending/movie/week', { language: 'pt-BR' })
   return data.results.slice(0, 12)
 }
+

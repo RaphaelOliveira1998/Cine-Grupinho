@@ -15,7 +15,7 @@ App privado para grupos de amigos recomendarem, avaliarem e comentarem filmes.
 ## Funcionalidades
 
 - Login e cadastro com Supabase Auth
-- Perfil com nome, username, foto e top 5 filmes favoritos
+- Perfil com nome, username, upload de foto e top 5 filmes favoritos
 - Perfis públicos acessíveis por membros do app
 - Criação e listagem de grupos
 - Grupos públicos ou privados com PIN de acesso
@@ -56,6 +56,8 @@ psql "$DATABASE_URL" -f drizzle/0001_profiles_and_group_settings.sql
 ```
 
 Também é possível copiar o conteúdo dos arquivos SQL e executar direto no painel do Supabase.
+
+O upload de foto usa Supabase Storage no bucket `avatars`. O app tenta criar esse bucket público automaticamente usando `SUPABASE_SERVICE_ROLE_KEY` no primeiro upload.
 
 4. Inicie o app:
 

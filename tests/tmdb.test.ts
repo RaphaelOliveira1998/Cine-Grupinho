@@ -17,4 +17,21 @@ describe('tmdb fallback', () => {
     const results = await searchMovies('Matrix')
     expect(results.map((movie) => movie.title)).toEqual(expect.arrayContaining(['Matrix', 'Matrix Reloaded', 'Matrix Revolutions', 'Matrix Resurrections', 'Animatrix']))
   })
+
+  it('returns fast and furious fallback results for Portuguese franchise search', async () => {
+    vi.stubEnv('TMDB_API_KEY', '')
+    vi.resetModules()
+    const { searchMovies } = await import('@/lib/tmdb')
+    const results = await searchMovies('velozes e furiosos')
+    expect(results.map((movie) => movie.title)).toEqual(expect.arrayContaining(['Velozes e Furiosos', '+ Velozes + Furiosos', 'Velozes & Furiosos 5: Operação Rio']))
+    expect(results[0].title).not.toBe('Interestelar')
+  })
+
+  it('does not return unrelated fallback movies for unknown searches', async () => {
+    vi.stubEnv('TMDB_API_KEY', '')
+    vi.resetModules()
+    const { searchMovies } = await import('@/lib/tmdb')
+    const results = await searchMovies('zzzzzzzzzz')
+    expect(results).toEqual([])
+  })
 })

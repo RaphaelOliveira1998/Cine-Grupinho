@@ -20,10 +20,12 @@ export function MovieSearch({ groupId }: { groupId: string }) {
   const [movies, setMovies] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [searchedQuery, setSearchedQuery] = useState('')
 
   async function search() {
     setLoading(true)
     setError('')
+    setSearchedQuery(query)
     const response = await fetch(`/api/tmdb/search?q=${encodeURIComponent(query)}`)
     setLoading(false)
     if (!response.ok) {
@@ -45,6 +47,7 @@ export function MovieSearch({ groupId }: { groupId: string }) {
         <Button type="button" onClick={search} disabled={loading || query.length < 1}>{loading ? 'Buscando...' : 'Buscar'}</Button>
       </div>
       {error && <p className="text-sm text-red-300">{error}</p>}
+      {!error && !loading && searchedQuery && movies.length === 0 && <p className="text-sm text-slate-400">Nenhum resultado para essa busca.</p>}
       <div className="grid gap-3 md:grid-cols-2">
         {movies.map((movie) => {
           const poster = posterUrl(movie.poster_path)
