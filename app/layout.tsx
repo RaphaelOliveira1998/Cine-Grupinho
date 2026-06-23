@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Cine Grupinho',
+  title: 'Beckflix',
   description: 'Recomendações privadas de filmes para grupos de amigos'
 }
 

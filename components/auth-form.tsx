@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Button } from '@/components/button'
@@ -39,8 +40,9 @@ export function AuthForm({ mode }: AuthFormProps) {
 
   return (
     <form onSubmit={onSubmit} className="w-full max-w-md space-y-4 rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/30">
-      <div className="space-y-2">
-        <p className="text-sm uppercase tracking-[0.3em] text-violet-300">Cine Grupinho</p>
+      <div className="flex flex-col items-center space-y-2 text-center">
+        <Image src="/icon.png" alt="Beckflix" width={80} height={80} className="h-20 w-20 rounded-2xl object-cover" priority />
+        <p className="text-sm uppercase tracking-[0.3em] text-violet-300">Beckflix</p>
         <h1 className="text-3xl font-bold text-white">{mode === 'login' ? 'Entrar' : 'Criar conta'}</h1>
         <p className="text-sm text-slate-400">Seu círculo privado de filmes, sem algoritmo idiota no caminho.</p>
       </div>
