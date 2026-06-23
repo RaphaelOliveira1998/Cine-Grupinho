@@ -1,15 +1,15 @@
 'use server'
 
-import { and, eq, sql } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db'
-import { comments, groupMembers, groups, movies, profileFavoriteMovies, profiles, ratings, recommendations } from '@/lib/db/schema'
+import { comments, groupMembers, groups, movies, profileFavoriteMovies, profiles, ratings, recommendations, weeklyCycles } from '@/lib/db/schema'
 import { createInviteCode } from '@/lib/invite'
 import { getMovieDetails } from '@/lib/tmdb'
 import { requireUser } from '@/lib/auth'
-import { commentSchema, groupSchema, joinGroupSchema, profileSchema, ratingSchema, recommendMovieSchema, updateGroupSchema } from '@/lib/validators'
-import { isGroupMember } from '@/lib/data'
+import { commentSchema, groupSchema, joinGroupSchema, profileSchema, ratingSchema, chooseWeeklyMovieSchema, updateGroupSchema } from '@/lib/validators'
+import { getOrCreateCurrentCycle, getCycleForRecommendation, isGroupMember } from '@/lib/data'
 import { avatarFileError, avatarStoragePath, hasAvatarUpload } from '@/lib/avatar'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -103,6 +103,42 @@ export async function updateProfileAction(formData: FormData) {
   redirect('/dashboard')
 }
 
+export async function updateProfilePanelAction(
+  _prevState: { error?: string; success?: boolean } | null,
+  formData: FormData
+): Promise<{ error?: string; success?: boolean }> {
+  try {
+    const user = await requireUser()
+    const rawAvatarFile = formData.get('avatarFile')
+    const avatarFile = rawAvatarFile instanceof File ? rawAvatarFile : null
+    const uploadedAvatarUrl = await uploadAvatar(user.id, avatarFile)
+    const parsed = profileSchema.parse({
+      name: value(formData, 'name'),
+      username: value(formData, 'username'),
+      avatarUrl: uploadedAvatarUrl || value(formData, 'avatarUrl'),
+      favoriteTmdbIds: values(formData, 'favoriteTmdbIds')
+    })
+    await db.update(profiles).set({
+      name: parsed.name,
+      username: parsed.username,
+      avatarUrl: parsed.avatarUrl || null
+    }).where(eq(profiles.id, user.id))
+    await db.delete(profileFavoriteMovies).where(eq(profileFavoriteMovies.userId, user.id))
+    const favoriteMovies = await Promise.all(parsed.favoriteTmdbIds.map((tmdbId) => upsertMovieFromTmdb(tmdbId)))
+    if (favoriteMovies.length > 0) {
+      await db.insert(profileFavoriteMovies).values(favoriteMovies.map((movie, index) => ({
+        userId: user.id,
+        movieId: movie.id,
+        position: index + 1
+      })))
+    }
+    revalidatePath('/', 'layout')
+    return { success: true }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Erro ao salvar perfil' }
+  }
+}
+
 export async function createGroupAction(formData: FormData) {
   const user = await requireUser()
   const parsed = groupSchema.parse({
@@ -158,25 +194,25 @@ export async function joinGroupAction(formData: FormData) {
   redirect(`/groups/${group.id}`)
 }
 
-export async function recommendMovieAction(formData: FormData) {
+export async function chooseWeeklyMovieAction(formData: FormData) {
   const user = await requireUser()
-  const parsed = recommendMovieSchema.parse({ groupId: value(formData, 'groupId'), tmdbId: value(formData, 'tmdbId') })
+  const parsed = chooseWeeklyMovieSchema.parse({ groupId: value(formData, 'groupId'), tmdbId: value(formData, 'tmdbId') })
   const member = await isGroupMember(parsed.groupId, user.id)
   if (!member) throw new Error('Acesso negado')
+  const cycle = await getOrCreateCurrentCycle(parsed.groupId)
+  if (!cycle) throw new Error('Nenhum ciclo ativo para este grupo')
+  if (cycle.chooserId !== user.id) throw new Error('Apenas o membro sorteado pode escolher o filme da semana')
+  if (cycle.recommendationId) throw new Error('O filme da semana já foi escolhido')
   const movie = await upsertMovieFromTmdb(parsed.tmdbId)
   const [recommendation] = await db.insert(recommendations).values({
     groupId: parsed.groupId,
     movieId: movie.id,
     recommendedBy: user.id,
-    status: 'recommended'
-  }).onConflictDoNothing().returning()
+    status: 'weekly'
+  }).returning()
+  await db.update(weeklyCycles).set({ recommendationId: recommendation.id }).where(eq(weeklyCycles.id, cycle.id))
   revalidatePath(`/groups/${parsed.groupId}`)
-  if (recommendation) redirect(`/groups/${parsed.groupId}/movies/${recommendation.id}`)
-  const existing = await db.query.recommendations.findFirst({
-    where: and(eq(recommendations.groupId, parsed.groupId), eq(recommendations.movieId, movie.id))
-  })
-  if (existing) redirect(`/groups/${parsed.groupId}/movies/${existing.id}`)
-  redirect(`/groups/${parsed.groupId}`)
+  redirect(`/groups/${parsed.groupId}/movies/${recommendation.id}`)
 }
 
 export async function rateMovieAction(formData: FormData) {
@@ -186,6 +222,10 @@ export async function rateMovieAction(formData: FormData) {
   const parsed = ratingSchema.parse({ stars: value(formData, 'stars') })
   const member = await isGroupMember(groupId, user.id)
   if (!member) throw new Error('Acesso negado')
+  const cycle = await getCycleForRecommendation(recommendationId)
+  if (!cycle) throw new Error('Este filme não está em votação')
+  const activeCycle = await getOrCreateCurrentCycle(groupId)
+  if (!activeCycle || activeCycle.id !== cycle.id) throw new Error('A semana de avaliação deste filme já encerrou')
   await db.insert(ratings).values({ recommendationId, userId: user.id, stars: parsed.stars })
     .onConflictDoUpdate({
       target: [ratings.recommendationId, ratings.userId],
@@ -202,6 +242,10 @@ export async function addCommentAction(formData: FormData) {
   const parsed = commentSchema.parse({ body: value(formData, 'body') })
   const member = await isGroupMember(groupId, user.id)
   if (!member) throw new Error('Acesso negado')
+  const cycle = await getCycleForRecommendation(recommendationId)
+  if (!cycle) throw new Error('Este filme não está em votação')
+  const activeCycle = await getOrCreateCurrentCycle(groupId)
+  if (!activeCycle || activeCycle.id !== cycle.id) throw new Error('A semana de avaliação deste filme já encerrou')
   await db.insert(comments).values({ recommendationId, userId: user.id, body: parsed.body })
   revalidatePath(`/groups/${groupId}/movies/${recommendationId}`)
 }

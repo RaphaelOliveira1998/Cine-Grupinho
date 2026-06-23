@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { useState } from 'react'
 import { Button } from '@/components/button'
 import { Input } from '@/components/input'
-import { recommendMovieAction } from '@/lib/actions'
+import { chooseWeeklyMovieAction } from '@/lib/actions'
 import { posterUrl } from '@/lib/utils'
 
 type SearchResult = {
@@ -43,8 +43,8 @@ export function MovieSearch({ groupId }: { groupId: string }) {
   return (
     <section className="space-y-4 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
       <div>
-        <h2 className="text-lg font-semibold text-white">Buscar no TMDb</h2>
-        <p className="text-sm text-slate-400">Encontre um filme e recomende para o grupo.</p>
+        <h2 className="text-lg font-semibold text-white">Escolha o filme da semana</h2>
+        <p className="text-sm text-slate-400">Você foi sorteado! Busque um filme e defina o filme da semana do grupo.</p>
       </div>
       <div className="flex flex-col gap-3 sm:flex-row">
         <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Matrix, Interestelar, Parasita..." />
@@ -63,10 +63,10 @@ export function MovieSearch({ groupId }: { groupId: string }) {
               <div className="min-w-0 flex-1 space-y-2">
                 <h3 className="line-clamp-1 font-semibold text-white">{movie.title}</h3>
                 <p className="line-clamp-2 text-sm text-slate-400">{movie.overview || 'Sem sinopse.'}</p>
-                <form action={recommendMovieAction}>
+                <form action={chooseWeeklyMovieAction}>
                   <input type="hidden" name="groupId" value={groupId} />
                   <input type="hidden" name="tmdbId" value={movie.id} />
-                  <Button className="px-3 py-1.5 text-xs">Recomendar</Button>
+                  <Button className="px-3 py-1.5 text-xs">Escolher</Button>
                 </form>
               </div>
             </div>

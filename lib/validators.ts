@@ -43,6 +43,11 @@ export const recommendMovieSchema = z.object({
   tmdbId: z.coerce.number().int().positive()
 })
 
+export const chooseWeeklyMovieSchema = z.object({
+  groupId: z.string().uuid(),
+  tmdbId: z.coerce.number().int().positive()
+})
+
 export const profileSchema = z.object({
   name: z.string().min(2).max(80),
   username: z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,24}$/),

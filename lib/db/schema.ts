@@ -62,9 +62,7 @@ export const recommendations = pgTable('recommendations', {
   recommendedBy: uuid('recommended_by').notNull().references(() => profiles.id, { onDelete: 'cascade' }),
   status: text('status').notNull().default('recommended'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
-}, (table) => ({
-  recommendationUnique: uniqueIndex('recommendations_group_movie_unique').on(table.groupId, table.movieId)
-}))
+})
 
 export const ratings = pgTable('ratings', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -86,6 +84,17 @@ export const comments = pgTable('comments', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 })
 
+export const weeklyCycles = pgTable('weekly_cycles', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  groupId: uuid('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
+  weekStart: timestamp('week_start', { withTimezone: true }).notNull(),
+  chooserId: uuid('chooser_id').notNull().references(() => profiles.id, { onDelete: 'cascade' }),
+  recommendationId: uuid('recommendation_id').references(() => recommendations.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  cycleGroupWeekUnique: uniqueIndex('weekly_cycles_group_week_unique').on(table.groupId, table.weekStart)
+}))
+
 export const profilesRelations = relations(profiles, ({ many }) => ({
   memberships: many(groupMembers),
   favoriteMovies: many(profileFavoriteMovies),
@@ -97,7 +106,8 @@ export const profilesRelations = relations(profiles, ({ many }) => ({
 export const groupsRelations = relations(groups, ({ many, one }) => ({
   owner: one(profiles, { fields: [groups.ownerId], references: [profiles.id] }),
   members: many(groupMembers),
-  recommendations: many(recommendations)
+  recommendations: many(recommendations),
+  weeklyCycles: many(weeklyCycles)
 }))
 
 export const groupMembersRelations = relations(groupMembers, ({ one }) => ({
@@ -121,4 +131,10 @@ export const recommendationsRelations = relations(recommendations, ({ one, many 
   recommender: one(profiles, { fields: [recommendations.recommendedBy], references: [profiles.id] }),
   ratings: many(ratings),
   comments: many(comments)
+}))
+
+export const weeklyCyclesRelations = relations(weeklyCycles, ({ one }) => ({
+  group: one(groups, { fields: [weeklyCycles.groupId], references: [groups.id] }),
+  chooser: one(profiles, { fields: [weeklyCycles.chooserId], references: [profiles.id] }),
+  recommendation: one(recommendations, { fields: [weeklyCycles.recommendationId], references: [recommendations.id] })
 }))
