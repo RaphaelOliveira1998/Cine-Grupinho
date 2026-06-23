@@ -4,6 +4,7 @@ import { LinkButton } from '@/components/button'
 import { MovieCard } from '@/components/movie-card'
 import { MovieSearch } from '@/components/movie-search'
 import { AppShell } from '@/components/shell'
+import { WeekCountdown } from '@/components/week-countdown'
 import { requireCompletedProfile } from '@/lib/auth'
 import { getCurrentCycleWithMovie, getGroupCycleHistory, getGroupForMember, getGroupMembers } from '@/lib/data'
 import { posterUrl } from '@/lib/utils'
@@ -72,6 +73,10 @@ export default async function GroupPage({ params }: { params: Promise<{ groupId:
                 </div>
               )}
             </div>
+
+            {cycle && weekStart && weekFinish && (
+              <WeekCountdown weekStart={weekStart.toISOString()} weekFinish={weekFinish.toISOString()} />
+            )}
 
             {!cycle && <p className="text-slate-300">Este grupo ainda não tem membros suficientes para iniciar a semana.</p>}
 
