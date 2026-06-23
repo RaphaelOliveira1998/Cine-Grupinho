@@ -1,7 +1,6 @@
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { LinkButton } from '@/components/button'
-import { MovieCard } from '@/components/movie-card'
 import { MovieSearch } from '@/components/movie-search'
 import { AppShell } from '@/components/shell'
 import { WeekCountdown } from '@/components/week-countdown'
@@ -127,20 +126,39 @@ export default async function GroupPage({ params }: { params: Promise<{ groupId:
               </div>
               <LinkButton href="/dashboard" className="bg-white/10 hover:bg-white/15">Voltar</LinkButton>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {history.map((item) => (
-                <MovieCard
-                  key={item.cycleId}
-                  href={`/groups/${group.id}/movies/${item.recommendationId}`}
-                  title={item.title}
-                  posterPath={item.posterPath}
-                  overview={null}
-                  recommendedBy={item.chooserName}
-                  recommendedByHref={item.chooserUsername ? `/profile/${item.chooserUsername}` : undefined}
-                  averageRating={item.averageRating}
-                  ratingCount={Number(item.ratingCount)}
-                />
-              ))}
+            <div className="grid gap-3 sm:grid-cols-2">
+              {history.map((item) => {
+                const itemStart = new Date(item.weekStart)
+                const itemEnd = weekEnd(itemStart)
+                return (
+                  <a
+                    key={item.cycleId}
+                    href={`/groups/${group.id}/movies/${item.recommendationId}`}
+                    className="group flex gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-3 hover:border-violet-400/60 hover:bg-white/[0.07]"
+                  >
+                    <div className="h-24 w-16 shrink-0 overflow-hidden rounded-xl bg-slate-900">
+                      {posterUrl(item.posterPath) ? (
+                        <Image src={posterUrl(item.posterPath)!} alt={item.title} width={128} height={192} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-center text-[10px] text-slate-500">Sem poster</div>
+                      )}
+                    </div>
+                    <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
+                      <div>
+                        <p className="text-[11px] uppercase tracking-wider text-violet-300/80">
+                          {dateRange.format(itemStart)} – {dateRange.format(new Date(itemEnd.getTime() - 1))}
+                        </p>
+                        <p className="line-clamp-1 font-semibold text-white group-hover:text-violet-200">{item.title}</p>
+                        <p className="line-clamp-1 text-xs text-slate-400">Por {item.chooserName}</p>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm">
+                        <span className="text-amber-300">★ {item.averageRating ? Number(item.averageRating).toFixed(1) : '—'}</span>
+                        <span className="text-xs text-slate-500">{Number(item.ratingCount)} avaliações</span>
+                      </div>
+                    </div>
+                  </a>
+                )
+              })}
             </div>
             {history.length === 0 && <div className="rounded-3xl border border-dashed border-white/15 p-10 text-center text-slate-400">Nenhuma semana concluída ainda.</div>}
           </section>

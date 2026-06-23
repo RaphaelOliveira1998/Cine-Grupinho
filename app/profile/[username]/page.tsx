@@ -28,18 +28,18 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         </section>
         <section>
           <h2 className="text-2xl font-bold text-white">Top 5 filmes favoritos</h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5">
             {favorites.map((movie) => {
               const poster = posterUrl(movie.posterPath)
               return (
-                <article key={movie.id} className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04]">
+                <article key={movie.id} className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
                   <div className="relative aspect-[2/3] bg-slate-900">
-                    {poster ? <Image src={poster} alt={movie.title} fill sizes="220px" className="object-cover" /> : <div className="flex h-full items-center justify-center text-slate-500">Sem poster</div>}
-                    <span className="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-sm font-semibold text-violet-200">#{movie.position}</span>
+                    {poster ? <Image src={poster} alt={movie.title} fill sizes="160px" className="object-cover" /> : <div className="flex h-full items-center justify-center text-xs text-slate-500">Sem poster</div>}
+                    <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-xs font-semibold text-violet-200">#{movie.position}</span>
                   </div>
-                  <div className="p-4">
-                    <h3 className="line-clamp-2 font-semibold text-white">{movie.title}</h3>
-                    <p className="mt-1 text-xs text-slate-400">{movie.releaseDate || 'Sem data'}</p>
+                  <div className="p-2.5">
+                    <h3 className="line-clamp-1 text-sm font-semibold text-white">{movie.title}</h3>
+                    <p className="mt-0.5 text-xs text-slate-400">{movie.releaseDate || 'Sem data'}</p>
                   </div>
                 </article>
               )
