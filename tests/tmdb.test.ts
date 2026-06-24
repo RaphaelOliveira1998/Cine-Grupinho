@@ -83,3 +83,35 @@ describe('tmdb search', () => {
     expect(results.map((movie) => movie.title)).not.toContain('Cromwell, O Homem de Ferro')
   })
 })
+
+describe('getTrendingMovies', () => {
+  it('returns up to 12 movies from the weekly trending endpoint', async () => {
+    vi.stubEnv('TMDB_API_KEY', 'test-key')
+    const trendingResults = Array.from({ length: 20 }, (_, i) => ({
+      id: i + 1,
+      title: `Filme ${i + 1}`,
+      original_title: `Movie ${i + 1}`,
+      overview: '',
+      poster_path: null,
+      release_date: '2024-01-01',
+    }))
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ results: trendingResults })))
+    const { getTrendingMovies } = await import('@/lib/tmdb')
+    const results = await getTrendingMovies()
+    expect(results).toHaveLength(12)
+    expect(results[0].title).toBe('Filme 1')
+  })
+
+  it('returns empty array when the API call fails', async () => {
+    vi.stubEnv('TMDB_API_KEY', 'test-key')
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('Network error') }))
+    const { getTrendingMovies } = await import('@/lib/tmdb')
+    await expect(getTrendingMovies()).resolves.toEqual([])
+  })
+
+  it('returns empty array when TMDB_API_KEY is missing', async () => {
+    vi.stubEnv('TMDB_API_KEY', '')
+    const { getTrendingMovies } = await import('@/lib/tmdb')
+    await expect(getTrendingMovies()).resolves.toEqual([])
+  })
+})

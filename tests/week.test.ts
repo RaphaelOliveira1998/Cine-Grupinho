@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { currentWeekStart, weekEnd, isWithinWeek } from '@/lib/week'
+import { currentWeekStart, weekEnd, isWithinWeek, nextWeekStart } from '@/lib/week'
 
 // BRT is UTC-3. Monday 00:00 BRT == Monday 03:00 UTC.
 
@@ -47,5 +47,23 @@ describe('isWithinWeek', () => {
     expect(isWithinWeek(start, start)).toBe(true)
     expect(isWithinWeek(start, new Date('2026-06-28T23:00:00.000Z'))).toBe(true)
     expect(isWithinWeek(start, weekEnd(start))).toBe(false)
+  })
+})
+
+describe('nextWeekStart', () => {
+  it('returns the Monday after the current week start', () => {
+    const now = new Date('2026-06-24T15:00:00.000Z')
+    expect(nextWeekStart(now).toISOString()).toBe('2026-06-29T03:00:00.000Z')
+  })
+
+  it('from Monday itself, next week starts 7 days later', () => {
+    const monday = new Date('2026-06-22T03:00:00.000Z')
+    expect(nextWeekStart(monday).toISOString()).toBe('2026-06-29T03:00:00.000Z')
+  })
+
+  it('is always exactly 7 days after currentWeekStart', () => {
+    const now = new Date('2026-06-26T10:00:00.000Z')
+    const expected = new Date(currentWeekStart(now).getTime() + 7 * 24 * 60 * 60 * 1000)
+    expect(nextWeekStart(now).toISOString()).toBe(expected.toISOString())
   })
 })
