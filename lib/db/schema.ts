@@ -18,6 +18,7 @@ export const groups = pgTable('groups', {
   accessPin: text('access_pin'),
   isPublic: boolean('is_public').default(false).notNull(),
   ownerId: uuid('owner_id').notNull().references(() => profiles.id, { onDelete: 'cascade' }),
+  firstCycleAt: timestamp('first_cycle_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 })
 
@@ -90,6 +91,7 @@ export const weeklyCycles = pgTable('weekly_cycles', {
   weekStart: timestamp('week_start', { withTimezone: true }).notNull(),
   chooserId: uuid('chooser_id').notNull().references(() => profiles.id, { onDelete: 'cascade' }),
   recommendationId: uuid('recommendation_id').references(() => recommendations.id, { onDelete: 'set null' }),
+  chooserNotifiedAt: timestamp('chooser_notified_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
   cycleGroupWeekUnique: uniqueIndex('weekly_cycles_group_week_unique').on(table.groupId, table.weekStart)

@@ -50,3 +50,8 @@ export function isWithinWeek(weekStart: Date, now: Date = new Date()): boolean {
   const t = now.getTime()
   return t >= start && t < end
 }
+
+/** Returns the start of the next week (next Monday 00:00 BRT) as a UTC Date. */
+export function nextWeekStart(now: Date = new Date()): Date {
+  return new Date(currentWeekStart(now).getTime() + WEEK_MS)
+}

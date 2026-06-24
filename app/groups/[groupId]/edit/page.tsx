@@ -3,6 +3,7 @@ import { Button } from '@/components/button'
 import { Input, Textarea } from '@/components/input'
 import { AppShell } from '@/components/shell'
 import { updateGroupAction } from '@/lib/actions'
+import { DeleteGroupButton } from '@/components/delete-group-button'
 import { requireCompletedProfile } from '@/lib/auth'
 import { getGroupForMember } from '@/lib/data'
 
@@ -37,6 +38,14 @@ export default async function EditGroupPage({ params }: { params: Promise<{ grou
           <div className="rounded-2xl bg-black/20 p-4 text-sm text-slate-400">Código atual: <span className="font-mono text-violet-200">{group.inviteCode}</span></div>
           <Button>Salvar alterações</Button>
         </form>
+
+        <div className="rounded-3xl border border-red-500/20 bg-red-500/[0.04] p-6 space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-red-300">Zona de perigo</h2>
+            <p className="mt-1 text-sm text-slate-400">Excluir o grupo remove todos os membros, ciclos e histórico permanentemente.</p>
+          </div>
+          <DeleteGroupButton groupId={group.id} groupName={group.name} />
+        </div>
       </div>
     </AppShell>
   )

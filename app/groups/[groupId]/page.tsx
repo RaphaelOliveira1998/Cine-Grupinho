@@ -6,6 +6,7 @@ import { AppShell } from '@/components/shell'
 import { WeekCountdown } from '@/components/week-countdown'
 import { requireCompletedProfile } from '@/lib/auth'
 import { getCurrentCycleWithMovie, getGroupCycleHistory, getGroupForMember, getGroupMembers } from '@/lib/data'
+import { startGroupCycleAction } from '@/lib/actions'
 import { posterUrl } from '@/lib/utils'
 import { weekEnd } from '@/lib/week'
 
@@ -13,6 +14,7 @@ export const dynamic = 'force-dynamic'
 
 const dateRange = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', timeZone: 'America/Sao_Paulo' })
 const deadlineFormat = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', timeZone: 'America/Sao_Paulo' })
+const fullDate = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', timeZone: 'America/Sao_Paulo' })
 
 export default async function GroupPage({ params }: { params: Promise<{ groupId: string }> }) {
   const { groupId } = await params
@@ -77,7 +79,48 @@ export default async function GroupPage({ params }: { params: Promise<{ groupId:
               <WeekCountdown weekStart={weekStart.toISOString()} weekFinish={weekFinish.toISOString()} />
             )}
 
-            {!cycle && <p className="text-slate-300">Este grupo ainda não tem membros suficientes para iniciar a semana.</p>}
+            {!cycle && !group.firstCycleAt && group.ownerId === user.id && (
+              <div className="space-y-3">
+                <p className="text-sm text-slate-300">O grupo está pronto. Quando deseja iniciar os ciclos semanais?</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <form action={startGroupCycleAction}>
+                    <input type="hidden" name="groupId" value={group.id} />
+                    <input type="hidden" name="mode" value="now" />
+                    <button type="submit" className="w-full rounded-2xl border border-violet-500/50 bg-violet-500/20 px-4 py-4 text-left hover:bg-violet-500/30 transition-colors">
+                      <p className="font-semibold text-white">Sortear agora</p>
+                      <p className="mt-1 text-xs text-slate-400">O sorteio acontece imediatamente com os membros atuais.</p>
+                    </button>
+                  </form>
+                  <form action={startGroupCycleAction}>
+                    <input type="hidden" name="groupId" value={group.id} />
+                    <input type="hidden" name="mode" value="next_week" />
+                    <button type="submit" className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-left hover:bg-white/[0.07] transition-colors">
+                      <p className="font-semibold text-white">Aguardar próxima semana</p>
+                      <p className="mt-1 text-xs text-slate-400">O sorteio ocorre automaticamente no domingo à noite.</p>
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {!cycle && !group.firstCycleAt && group.ownerId !== user.id && (
+              <p className="text-slate-300">Aguardando o administrador iniciar os ciclos do grupo.</p>
+            )}
+
+            {!cycle && group.firstCycleAt && new Date() < new Date(group.firstCycleAt) && (
+              <div className="rounded-2xl border border-dashed border-amber-500/30 bg-amber-500/5 p-5 text-center">
+                <p className="font-medium text-amber-200">Ciclos iniciam em breve</p>
+                <p className="mt-1 text-sm text-slate-400">
+                  O primeiro sorteio acontece a partir de{' '}
+                  <span className="text-white">{fullDate.format(new Date(group.firstCycleAt))}</span>.
+                  Aproveite para convidar os membros!
+                </p>
+              </div>
+            )}
+
+            {!cycle && group.firstCycleAt && new Date() >= new Date(group.firstCycleAt) && (
+              <p className="text-slate-300">Este grupo ainda não tem membros suficientes para iniciar a semana.</p>
+            )}
 
             {cycle && !cycle.movie && cycle.isViewerChooser && <MovieSearch groupId={group.id} />}
 

@@ -1,8 +1,10 @@
 import { and, avg, count, desc, eq, lt, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { comments, groupMembers, groups, movies, profileFavoriteMovies, profiles, ratings, recommendations, weeklyCycles } from '@/lib/db/schema'
-import { currentWeekStart } from '@/lib/week'
+import { currentWeekStart, weekEnd } from '@/lib/week'
 import { pickChooser } from '@/lib/draw'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { sendChooserNotification } from '@/lib/email'
 
 export async function isGroupMember(groupId: string, userId: string) {
   const member = await db.query.groupMembers.findFirst({
@@ -37,6 +39,7 @@ export async function getGroupForMember(groupId: string, userId: string) {
     accessPin: groups.accessPin,
     isPublic: groups.isPublic,
     ownerId: groups.ownerId,
+    firstCycleAt: groups.firstCycleAt,
     role: groupMembers.role,
     createdAt: groups.createdAt
   })
@@ -178,6 +181,11 @@ export async function getOrCreateCurrentCycle(groupId: string) {
   })
   if (existing) return existing
 
+  // Check if cycles are allowed to start yet
+  const group = await db.query.groups.findFirst({ where: eq(groups.id, groupId) })
+  if (!group) return null
+  if (!group.firstCycleAt || weekStart < group.firstCycleAt) return null
+
   const members = await db.select({ userId: groupMembers.userId })
     .from(groupMembers)
     .where(eq(groupMembers.groupId, groupId))
@@ -201,9 +209,29 @@ export async function getOrCreateCurrentCycle(groupId: string) {
     .values({ groupId, weekStart, chooserId })
     .onConflictDoNothing({ target: [weeklyCycles.groupId, weeklyCycles.weekStart] })
 
-  return db.query.weeklyCycles.findFirst({
+  const cycle = await db.query.weeklyCycles.findFirst({
     where: and(eq(weeklyCycles.groupId, groupId), eq(weeklyCycles.weekStart, weekStart))
   })
+
+  // Send email notification to the drawn chooser (fire-and-forget)
+  if (cycle && cycle.chooserId === chooserId) {
+    const [chooserProfile, authUser] = await Promise.all([
+      db.query.profiles.findFirst({ where: eq(profiles.id, chooserId) }),
+      createAdminClient().auth.admin.getUserById(chooserId)
+    ])
+    const email = authUser.data.user?.email
+    if (chooserProfile && email) {
+      sendChooserNotification({
+        toEmail: email,
+        toName: chooserProfile.name,
+        groupName: group.name,
+        weekStart,
+        weekEnd: weekEnd(weekStart),
+      }).catch(() => {})
+    }
+  }
+
+  return cycle
 }
 
 /**

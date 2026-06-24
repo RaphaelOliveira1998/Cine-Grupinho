@@ -16,6 +16,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter()
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -25,6 +26,16 @@ export function AuthForm({ mode }: AuthFormProps) {
     const email = String(form.get('email'))
     const password = String(form.get('password'))
     const name = String(form.get('name') || '')
+
+    if (mode === 'register') {
+      const confirmPassword = String(form.get('confirmPassword') || '')
+      if (password !== confirmPassword) {
+        setError('As senhas não coincidem.')
+        setLoading(false)
+        return
+      }
+    }
+
     const supabase = createClient()
     const result = mode === 'login'
       ? await supabase.auth.signInWithPassword({ email, password })
@@ -32,6 +43,10 @@ export function AuthForm({ mode }: AuthFormProps) {
     setLoading(false)
     if (result.error) {
       setError(result.error.message)
+      return
+    }
+    if (mode === 'register') {
+      setEmailSent(true)
       return
     }
     router.replace('/dashboard')
@@ -46,14 +61,24 @@ export function AuthForm({ mode }: AuthFormProps) {
         <h1 className="text-3xl font-bold text-white">{mode === 'login' ? 'Entrar' : 'Criar conta'}</h1>
         <p className="text-sm text-slate-400">Seu círculo privado de filmes, sem algoritmo idiota no caminho.</p>
       </div>
-      {mode === 'register' && <Input name="name" placeholder="Nome" required minLength={2} />}
-      <Input name="email" type="email" placeholder="Email" required />
-      <Input name="password" type="password" placeholder="Senha" required minLength={6} />
-      {error && <p className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</p>}
-      <Button disabled={loading} className="w-full">{loading ? 'Processando...' : mode === 'login' ? 'Entrar' : 'Cadastrar'}</Button>
-      <p className="text-center text-sm text-slate-400">
-        {mode === 'login' ? 'Sem conta?' : 'Já tem conta?'} <Link href={mode === 'login' ? '/register' : '/login'} className="text-violet-300 hover:text-violet-200">{mode === 'login' ? 'Cadastre-se' : 'Entrar'}</Link>
-      </p>
+      {emailSent ? (
+        <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-4 text-center text-sm text-violet-200">
+          <p className="font-semibold text-base mb-1">Conta criada!</p>
+          <p>Enviamos um email de verificação para a sua caixa de entrada. Verifique sua conta antes de fazer login.</p>
+        </div>
+      ) : (
+        <>
+          {mode === 'register' && <Input name="name" placeholder="Nome" required minLength={2} />}
+          <Input name="email" type="email" placeholder="Email" required />
+          <Input name="password" type="password" placeholder="Senha" required minLength={6} />
+          {mode === 'register' && <Input name="confirmPassword" type="password" placeholder="Confirmar senha" required minLength={6} />}
+          {error && <p className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</p>}
+          <Button disabled={loading} className="w-full">{loading ? 'Processando...' : mode === 'login' ? 'Entrar' : 'Cadastrar'}</Button>
+          <p className="text-center text-sm text-slate-400">
+            {mode === 'login' ? 'Sem conta?' : 'Já tem conta?'} <Link href={mode === 'login' ? '/register' : '/login'} className="text-violet-300 hover:text-violet-200">{mode === 'login' ? 'Cadastre-se' : 'Entrar'}</Link>
+          </p>
+        </>
+      )}
     </form>
   )
 }

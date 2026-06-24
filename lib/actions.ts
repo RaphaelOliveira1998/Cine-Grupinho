@@ -12,6 +12,7 @@ import { commentSchema, groupSchema, joinGroupSchema, profileSchema, ratingSchem
 import { getOrCreateCurrentCycle, getCycleForRecommendation, isGroupMember } from '@/lib/data'
 import { avatarFileError, avatarStoragePath, hasAvatarUpload } from '@/lib/avatar'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { nextWeekStart } from '@/lib/week'
 
 function value(formData: FormData, key: string) {
   const raw = formData.get(key)
@@ -154,10 +155,32 @@ export async function createGroupAction(formData: FormData) {
     inviteCode,
     accessPin: parsed.isPublic ? null : parsed.accessPin || null,
     isPublic: parsed.isPublic,
-    ownerId: user.id
+    ownerId: user.id,
+    firstCycleAt: null
   }).returning()
   await db.insert(groupMembers).values({ groupId: group.id, userId: user.id, role: 'owner' })
   redirect(`/groups/${group.id}`)
+}
+
+export async function startGroupCycleAction(formData: FormData) {
+  const user = await requireUser()
+  const groupId = value(formData, 'groupId')
+  const mode = value(formData, 'mode')
+  const group = await db.query.groups.findFirst({ where: eq(groups.id, groupId) })
+  if (!group || group.ownerId !== user.id) throw new Error('Acesso negado')
+  const firstCycleAt = mode === 'next_week' ? nextWeekStart() : new Date()
+  await db.update(groups).set({ firstCycleAt }).where(eq(groups.id, groupId))
+  revalidatePath(`/groups/${groupId}`)
+  redirect(`/groups/${groupId}`)
+}
+
+export async function deleteGroupAction(formData: FormData) {
+  const user = await requireUser()
+  const groupId = value(formData, 'groupId')
+  const group = await db.query.groups.findFirst({ where: eq(groups.id, groupId) })
+  if (!group || group.ownerId !== user.id) throw new Error('Acesso negado')
+  await db.delete(groups).where(eq(groups.id, groupId))
+  redirect('/dashboard')
 }
 
 export async function updateGroupAction(formData: FormData) {
