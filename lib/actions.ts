@@ -12,7 +12,7 @@ import { commentSchema, groupSchema, joinGroupSchema, profileSchema, ratingSchem
 import { getOrCreateCurrentCycle, getCycleForRecommendation, isGroupMember } from '@/lib/data'
 import { avatarFileError, avatarStoragePath, hasAvatarUpload } from '@/lib/avatar'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { nextWeekStart } from '@/lib/week'
+import { nextWeekStart, currentWeekStart } from '@/lib/week'
 
 function value(formData: FormData, key: string) {
   const raw = formData.get(key)
@@ -168,7 +168,7 @@ export async function startGroupCycleAction(formData: FormData) {
   const mode = value(formData, 'mode')
   const group = await db.query.groups.findFirst({ where: eq(groups.id, groupId) })
   if (!group || group.ownerId !== user.id) throw new Error('Acesso negado')
-  const firstCycleAt = mode === 'next_week' ? nextWeekStart() : new Date()
+  const firstCycleAt = mode === 'next_week' ? nextWeekStart() : currentWeekStart()
   await db.update(groups).set({ firstCycleAt }).where(eq(groups.id, groupId))
   revalidatePath(`/groups/${groupId}`)
   redirect(`/groups/${groupId}`)
