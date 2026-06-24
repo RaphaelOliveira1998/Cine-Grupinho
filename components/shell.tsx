@@ -36,7 +36,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       </header>
       <section className="mx-auto max-w-6xl px-4 py-8">{children}</section>
       <footer className="border-t border-white/5 py-4 text-center">
-        <p className="text-xs text-slate-600">By Stacio Technologies · v1.0.0</p>
+        <p className="text-xs text-slate-600">By Stacio Technologies · v1.1.0</p>
       </footer>
     </main>
   )
