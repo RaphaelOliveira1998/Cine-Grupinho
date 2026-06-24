@@ -1,19 +1,24 @@
 import { notFound } from 'next/navigation'
-import { Button } from '@/components/button'
+import { Button, SubmitButton } from '@/components/button'
 import { Input, Textarea } from '@/components/input'
 import { AppShell } from '@/components/shell'
 import { updateGroupAction } from '@/lib/actions'
 import { DeleteGroupButton } from '@/components/delete-group-button'
+import { TransferOwnership } from '@/components/transfer-ownership'
 import { requireCompletedProfile } from '@/lib/auth'
-import { getGroupForMember } from '@/lib/data'
+import { getGroupForMember, getGroupMembers } from '@/lib/data'
 
 export const dynamic = 'force-dynamic'
 
 export default async function EditGroupPage({ params }: { params: Promise<{ groupId: string }> }) {
   const { groupId } = await params
   const { user } = await requireCompletedProfile()
-  const group = await getGroupForMember(groupId, user.id)
+  const [group, allMembers] = await Promise.all([
+    getGroupForMember(groupId, user.id),
+    getGroupMembers(groupId)
+  ])
   if (!group || group.ownerId !== user.id) notFound()
+  const otherMembers = allMembers.filter((m) => m.id !== user.id)
   return (
     <AppShell>
       <div className="mx-auto max-w-xl space-y-6">
@@ -36,7 +41,7 @@ export default async function EditGroupPage({ params }: { params: Promise<{ grou
             Gerar novo código de convite
           </label>
           <div className="rounded-2xl bg-black/20 p-4 text-sm text-slate-400">Código atual: <span className="font-mono text-violet-200">{group.inviteCode}</span></div>
-          <Button>Salvar alterações</Button>
+          <SubmitButton pendingLabel="Salvando...">Salvar alterações</SubmitButton>
         </form>
 
         <div className="rounded-3xl border border-red-500/20 bg-red-500/[0.04] p-6 space-y-4">
@@ -44,6 +49,13 @@ export default async function EditGroupPage({ params }: { params: Promise<{ grou
             <h2 className="text-lg font-semibold text-red-300">Zona de perigo</h2>
             <p className="mt-1 text-sm text-slate-400">Excluir o grupo remove todos os membros, ciclos e histórico permanentemente.</p>
           </div>
+          {otherMembers.length > 0 && (
+            <div className="space-y-2 border-b border-white/10 pb-4">
+              <p className="text-sm font-medium text-amber-300">Transferir administração</p>
+              <p className="text-xs text-slate-400">Você deixará de ser admin e o membro selecionado assumirá o controle.</p>
+              <TransferOwnership groupId={group.id} members={otherMembers} />
+            </div>
+          )}
           <DeleteGroupButton groupId={group.id} groupName={group.name} />
         </div>
       </div>

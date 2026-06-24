@@ -17,6 +17,8 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
+  const [forgotPassword, setForgotPassword] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -24,6 +26,18 @@ export function AuthForm({ mode }: AuthFormProps) {
     setLoading(true)
     const form = new FormData(event.currentTarget)
     const email = String(form.get('email'))
+
+    if (forgotPassword) {
+      const supabase = createClient()
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/login`
+      })
+      setLoading(false)
+      if (resetError) { setError(resetError.message); return }
+      setResetSent(true)
+      return
+    }
+
     const password = String(form.get('password'))
     const name = String(form.get('name') || '')
 
@@ -66,6 +80,22 @@ export function AuthForm({ mode }: AuthFormProps) {
           <p className="font-semibold text-base mb-1">Conta criada!</p>
           <p>Enviamos um email de verificação para a sua caixa de entrada. Verifique sua conta antes de fazer login.</p>
         </div>
+      ) : resetSent ? (
+        <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-4 text-center text-sm text-violet-200">
+          <p className="font-semibold text-base mb-1">Email enviado!</p>
+          <p>Verifique sua caixa de entrada e clique no link para redefinir sua senha.</p>
+          <button type="button" onClick={() => { setResetSent(false); setForgotPassword(false) }} className="mt-3 text-violet-300 hover:text-violet-200 underline text-xs">Voltar ao login</button>
+        </div>
+      ) : forgotPassword ? (
+        <>
+          <p className="text-center text-sm text-slate-400">Insira seu email e enviaremos um link para redefinir sua senha.</p>
+          <Input name="email" type="email" placeholder="Email" required />
+          {error && <p className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</p>}
+          <Button disabled={loading} className="w-full">{loading ? 'Enviando...' : 'Enviar link'}</Button>
+          <p className="text-center text-sm text-slate-400">
+            <button type="button" onClick={() => { setForgotPassword(false); setError('') }} className="text-violet-300 hover:text-violet-200">Voltar ao login</button>
+          </p>
+        </>
       ) : (
         <>
           {mode === 'register' && <Input name="name" placeholder="Nome" required minLength={2} />}
@@ -74,6 +104,11 @@ export function AuthForm({ mode }: AuthFormProps) {
           {mode === 'register' && <Input name="confirmPassword" type="password" placeholder="Confirmar senha" required minLength={6} />}
           {error && <p className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</p>}
           <Button disabled={loading} className="w-full">{loading ? 'Processando...' : mode === 'login' ? 'Entrar' : 'Cadastrar'}</Button>
+          {mode === 'login' && (
+            <p className="text-center text-sm text-slate-400">
+              <button type="button" onClick={() => { setForgotPassword(true); setError('') }} className="text-violet-300 hover:text-violet-200">Esqueci a senha</button>
+            </p>
+          )}
           <p className="text-center text-sm text-slate-400">
             {mode === 'login' ? 'Sem conta?' : 'Já tem conta?'} <Link href={mode === 'login' ? '/register' : '/login'} className="text-violet-300 hover:text-violet-200">{mode === 'login' ? 'Cadastre-se' : 'Entrar'}</Link>
           </p>
