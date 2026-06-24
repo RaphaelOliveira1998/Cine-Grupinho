@@ -19,7 +19,10 @@ export async function requireUser() {
 
 export async function requireCompletedProfile() {
   const user = await requireUser()
-  const profile = await db.query.profiles.findFirst({ where: eq(profiles.id, user.id) })
+  const profile = await db.query.profiles.findFirst({ where: eq(profiles.id, user.id) }).catch((e: unknown) => {
+    console.error('[DB ERROR]', e instanceof Error ? e.message : e, (e as NodeJS.ErrnoException)?.code)
+    throw e
+  })
   if (!profile?.username) redirect('/profile/setup')
   return { user, profile }
 }
