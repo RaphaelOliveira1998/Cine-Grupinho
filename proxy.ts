@@ -4,7 +4,7 @@ import { createServerClient } from '@supabase/ssr'
 const privateRoutes = ['/dashboard', '/groups']
 const authRoutes = ['/login', '/register']
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request })
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
