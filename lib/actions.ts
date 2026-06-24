@@ -1,6 +1,6 @@
 'use server'
 
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db'
@@ -13,6 +13,7 @@ import { getOrCreateCurrentCycle, getCycleForRecommendation, isGroupMember } fro
 import { avatarFileError, avatarStoragePath, hasAvatarUpload } from '@/lib/avatar'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { nextWeekStart, currentWeekStart } from '@/lib/week'
+import { sendRatingNotification } from '@/lib/email'
 
 function value(formData: FormData, key: string) {
   const raw = formData.get(key)
@@ -174,6 +175,17 @@ export async function startGroupCycleAction(formData: FormData) {
   redirect(`/groups/${groupId}`)
 }
 
+export async function leaveGroupAction(formData: FormData) {  const user = await requireUser()
+  const groupId = value(formData, 'groupId')
+  const group = await db.query.groups.findFirst({ where: eq(groups.id, groupId) })
+  if (!group) throw new Error('Grupo não encontrado')
+  if (group.ownerId === user.id) throw new Error('O dono não pode sair do grupo. Transfira a administração ou exclua o grupo.')
+  await db.delete(groupMembers).where(
+    and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, user.id))
+  )
+  redirect('/dashboard')
+}
+
 export async function deleteGroupAction(formData: FormData) {
   const user = await requireUser()
   const groupId = value(formData, 'groupId')
@@ -181,6 +193,41 @@ export async function deleteGroupAction(formData: FormData) {
   if (!group || group.ownerId !== user.id) throw new Error('Acesso negado')
   await db.delete(groups).where(eq(groups.id, groupId))
   redirect('/dashboard')
+}
+
+export async function transferOwnershipAction(formData: FormData) {
+  const user = await requireUser()
+  const groupId = value(formData, 'groupId')
+  const newOwnerId = value(formData, 'newOwnerId')
+  const group = await db.query.groups.findFirst({ where: eq(groups.id, groupId) })
+  if (!group || group.ownerId !== user.id) throw new Error('Acesso negado')
+  if (newOwnerId === user.id) throw new Error('Você já é o dono do grupo')
+  const newMember = await db.query.groupMembers.findFirst({
+    where: and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, newOwnerId))
+  })
+  if (!newMember) throw new Error('Membro não encontrado')
+  await db.update(groups).set({ ownerId: newOwnerId }).where(eq(groups.id, groupId))
+  await db.update(groupMembers).set({ role: 'owner' }).where(
+    and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, newOwnerId))
+  )
+  await db.update(groupMembers).set({ role: 'member' }).where(
+    and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, user.id))
+  )
+  revalidatePath(`/groups/${groupId}`)
+  redirect(`/groups/${groupId}`)
+}
+
+export async function removeMemberAction(formData: FormData) {
+  const user = await requireUser()
+  const groupId = value(formData, 'groupId')
+  const memberId = value(formData, 'memberId')
+  const group = await db.query.groups.findFirst({ where: eq(groups.id, groupId) })
+  if (!group || group.ownerId !== user.id) throw new Error('Acesso negado')
+  if (memberId === user.id) throw new Error('Você não pode remover a si mesmo')
+  await db.delete(groupMembers).where(
+    and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, memberId))
+  )
+  revalidatePath(`/groups/${groupId}`)
 }
 
 export async function updateGroupAction(formData: FormData) {
@@ -249,11 +296,46 @@ export async function rateMovieAction(formData: FormData) {
   if (!cycle) throw new Error('Este filme não está em votação')
   const activeCycle = await getOrCreateCurrentCycle(groupId)
   if (!activeCycle || activeCycle.id !== cycle.id) throw new Error('A semana de avaliação deste filme já encerrou')
+
+  const existingRating = await db.query.ratings.findFirst({
+    where: and(eq(ratings.recommendationId, recommendationId), eq(ratings.userId, user.id))
+  })
+  const isNewRating = !existingRating
+
   await db.insert(ratings).values({ recommendationId, userId: user.id, stars: parsed.stars })
     .onConflictDoUpdate({
       target: [ratings.recommendationId, ratings.userId],
       set: { stars: parsed.stars, updatedAt: sql`now()` }
     })
+
+  if (isNewRating) {
+    const [rec, raterProfile] = await Promise.all([
+      db.query.recommendations.findFirst({
+        where: eq(recommendations.id, recommendationId),
+        with: { movie: true, recommender: true }
+      }),
+      db.query.profiles.findFirst({ where: eq(profiles.id, user.id) })
+    ])
+    if (rec && raterProfile && rec.recommendedBy !== user.id) {
+      const supabase = createAdminClient()
+      const group = await db.query.groups.findFirst({ where: eq(groups.id, groupId) })
+      const authUser = await supabase.auth.admin.getUserById(rec.recommendedBy)
+      const email = authUser.data.user?.email
+      if (email && group) {
+        sendRatingNotification({
+          toEmail: email,
+          toName: rec.recommender.name,
+          raterName: raterProfile.name,
+          movieTitle: rec.movie.title,
+          stars: parsed.stars,
+          groupName: group.name,
+          groupId,
+          recommendationId,
+        }).catch(() => {})
+      }
+    }
+  }
+
   revalidatePath(`/groups/${groupId}`)
   revalidatePath(`/groups/${groupId}/movies/${recommendationId}`)
 }

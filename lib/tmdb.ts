@@ -100,6 +100,25 @@ export async function getMovieDetails(tmdbId: number) {
   return tmdbFetch<TmdbMovieDetails>(`/movie/${tmdbId}`, { language: 'pt-BR' })
 }
 
+export async function getMovieTrailer(tmdbId: number): Promise<string | null> {
+  try {
+    const data = await tmdbFetch<{ results: { key: string; site: string; type: string; official: boolean }[] }>(
+      `/movie/${tmdbId}/videos`,
+      { language: 'pt-BR' }
+    )
+    const ptTrailer = data.results.find((v) => v.site === 'YouTube' && v.type === 'Trailer')
+    if (ptTrailer) return ptTrailer.key
+    const enData = await tmdbFetch<{ results: { key: string; site: string; type: string; official: boolean }[] }>(
+      `/movie/${tmdbId}/videos`,
+      { language: 'en-US' }
+    )
+    const enTrailer = enData.results.find((v) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser'))
+    return enTrailer?.key ?? null
+  } catch {
+    return null
+  }
+}
+
 export async function getTrendingMovies() {
   try {
     const data = await tmdbFetch<{ results: TmdbMovie[] }>('/trending/movie/week', { language: 'pt-BR' })

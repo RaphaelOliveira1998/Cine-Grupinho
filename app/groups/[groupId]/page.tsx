@@ -1,6 +1,8 @@
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
-import { LinkButton } from '@/components/button'
+import { LinkButton, SubmitButton } from '@/components/button'
+import { LeaveGroupButton } from '@/components/leave-group-button'
+import { RemoveMemberButton } from '@/components/remove-member-button'
 import { MovieSearch } from '@/components/movie-search'
 import { AppShell } from '@/components/shell'
 import { WeekCountdown } from '@/components/week-countdown'
@@ -40,6 +42,7 @@ export default async function GroupPage({ params }: { params: Promise<{ groupId:
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           {group.ownerId === user.id && <LinkButton href={`/groups/${group.id}/edit`} className="bg-white/10 hover:bg-white/15">Editar grupo</LinkButton>}
+          {group.ownerId !== user.id && <LeaveGroupButton groupId={group.id} groupName={group.name} />}
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
             Código: <span className="font-mono text-violet-200">{group.inviteCode}</span>
           </div>
@@ -86,18 +89,18 @@ export default async function GroupPage({ params }: { params: Promise<{ groupId:
                   <form action={startGroupCycleAction}>
                     <input type="hidden" name="groupId" value={group.id} />
                     <input type="hidden" name="mode" value="now" />
-                    <button type="submit" className="w-full rounded-2xl border border-violet-500/50 bg-violet-500/20 px-4 py-4 text-left hover:bg-violet-500/30 transition-colors">
+                    <SubmitButton pendingLabel="Sorteando..." className="w-full rounded-2xl border border-violet-500/50 bg-violet-500/20 px-4 py-4 text-left hover:bg-violet-500/30 transition-colors">
                       <p className="font-semibold text-white">Sortear agora</p>
                       <p className="mt-1 text-xs text-slate-400">O sorteio acontece imediatamente com os membros atuais.</p>
-                    </button>
+                    </SubmitButton>
                   </form>
                   <form action={startGroupCycleAction}>
                     <input type="hidden" name="groupId" value={group.id} />
                     <input type="hidden" name="mode" value="next_week" />
-                    <button type="submit" className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-left hover:bg-white/[0.07] transition-colors">
+                    <SubmitButton pendingLabel="Agendando..." className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-left hover:bg-white/[0.07] transition-colors">
                       <p className="font-semibold text-white">Aguardar próxima semana</p>
                       <p className="mt-1 text-xs text-slate-400">O sorteio ocorre automaticamente no domingo à noite.</p>
-                    </button>
+                    </SubmitButton>
                   </form>
                 </div>
               </div>
@@ -210,15 +213,20 @@ export default async function GroupPage({ params }: { params: Promise<{ groupId:
           <aside className="h-fit space-y-3 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
             <h2 className="text-xl font-bold text-white">Membros</h2>
             {members.map((member) => (
-              <a key={member.id} href={member.username ? `/profile/${member.username}` : '#'} className="flex items-center gap-3 rounded-2xl bg-black/20 p-3 hover:bg-white/10">
-                <div className="h-10 w-10 overflow-hidden rounded-xl bg-slate-900">
-                  {member.avatarUrl ? <Image src={member.avatarUrl} alt={member.name} width={80} height={80} unoptimized className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-violet-200">{member.name.slice(0, 1).toUpperCase()}</div>}
-                </div>
-                <div className="min-w-0">
-                  <p className="line-clamp-1 text-sm font-medium text-white">{member.name}</p>
-                  <p className="text-xs text-slate-400">{member.username ? `@${member.username}` : 'sem username'} · {member.role}</p>
-                </div>
-              </a>
+              <div key={member.id} className="flex items-center gap-3 rounded-2xl bg-black/20 p-3">
+                <a href={member.username ? `/profile/${member.username}` : '#'} className="flex flex-1 items-center gap-3 hover:opacity-80 min-w-0">
+                  <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-slate-900">
+                    {member.avatarUrl ? <Image src={member.avatarUrl} alt={member.name} width={80} height={80} unoptimized className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-violet-200">{member.name.slice(0, 1).toUpperCase()}</div>}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="line-clamp-1 text-sm font-medium text-white">{member.name}</p>
+                    <p className="text-xs text-slate-400">{member.username ? `@${member.username}` : 'sem username'} · {member.role}</p>
+                  </div>
+                </a>
+                {group.ownerId === user.id && member.id !== user.id && (
+                  <RemoveMemberButton groupId={group.id} memberId={member.id} memberName={member.name} />
+                )}
+              </div>
             ))}
           </aside>
         </div>

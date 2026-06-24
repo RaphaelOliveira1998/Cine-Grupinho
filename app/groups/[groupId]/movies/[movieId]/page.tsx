@@ -1,12 +1,13 @@
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
-import { Button } from '@/components/button'
+import { Button, SubmitButton } from '@/components/button'
 import { Textarea } from '@/components/input'
 import { AppShell } from '@/components/shell'
 import { addCommentAction, rateMovieAction } from '@/lib/actions'
 import { requireCompletedProfile } from '@/lib/auth'
 import { getGroupForMember, getRecommendationComments, getRecommendationDetail } from '@/lib/data'
 import { formatDate, posterUrl } from '@/lib/utils'
+import { getMovieTrailer } from '@/lib/tmdb'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,9 +16,12 @@ export default async function MoviePage({ params }: { params: Promise<{ groupId:
   const { user } = await requireCompletedProfile()
   const group = await getGroupForMember(groupId, user.id)
   if (!group) notFound()
-  const movie = await getRecommendationDetail(groupId, movieId, user.id)
+  const [movie, comments] = await Promise.all([
+    getRecommendationDetail(groupId, movieId, user.id),
+    getRecommendationComments(movieId),
+  ])
   if (!movie) notFound()
-  const comments = await getRecommendationComments(movie.id)
+  const trailerKey = await getMovieTrailer(movie.tmdbId).catch(() => null)
   const poster = posterUrl(movie.posterPath)
   const average = movie.averageRating ? Number(movie.averageRating).toFixed(1) : '—'
 
@@ -51,12 +55,23 @@ export default async function MoviePage({ params }: { params: Promise<{ groupId:
             </div>
           </div>
           <p className="text-lg leading-8 text-slate-300">{movie.overview || 'Sem sinopse.'}</p>
+          {trailerKey && (
+            <div className="overflow-hidden rounded-2xl border border-white/10 aspect-video">
+              <iframe
+                src={`https://www.youtube.com/embed/${trailerKey}`}
+                title="Trailer"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="h-full w-full"
+              />
+            </div>
+          )}
           <form action={rateMovieAction} className="space-y-3 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
             <input type="hidden" name="groupId" value={group.id} />
             <input type="hidden" name="recommendationId" value={movie.id} />
             <h2 className="text-xl font-semibold text-white">Avaliar</h2>
             <div className="flex flex-wrap gap-2">
-              {[1, 2, 3, 4, 5].map((star) => <Button key={star} name="stars" value={star} className="bg-amber-500 text-black hover:bg-amber-400">{star} ★</Button>)}
+              {[1, 2, 3, 4, 5].map((star) => <SubmitButton key={star} name="stars" value={star} pendingLabel="..." className="bg-amber-500 text-black hover:bg-amber-400">{star} ★</SubmitButton>)}
             </div>
           </form>
           <section className="space-y-4 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
@@ -65,7 +80,7 @@ export default async function MoviePage({ params }: { params: Promise<{ groupId:
               <input type="hidden" name="groupId" value={group.id} />
               <input type="hidden" name="recommendationId" value={movie.id} />
               <Textarea name="body" placeholder="Escreva um comentário" rows={3} required maxLength={1000} />
-              <Button>Comentar</Button>
+              <SubmitButton pendingLabel="Comentando...">Comentar</SubmitButton>
             </form>
             <div className="space-y-3">
               {comments.map((comment) => (

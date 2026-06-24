@@ -67,6 +67,7 @@ function EditForm({
   const [selectedMovies, setSelectedMovies] = useState<SearchResult[]>(favorites.map(toSearchResult))
   const [avatarPreview, setAvatarPreview] = useState(profile.avatarUrl ?? '')
   const [avatarObjectUrl, setAvatarObjectUrl] = useState('')
+  const [avatarError, setAvatarError] = useState('')
   const [visibleCount, setVisibleCount] = useState(5)
 
   useEffect(() => {
@@ -85,7 +86,15 @@ function EditForm({
   function changeAvatar(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (avatarObjectUrl) URL.revokeObjectURL(avatarObjectUrl)
+    setAvatarError('')
     if (!file) {
+      setAvatarObjectUrl('')
+      setAvatarPreview(profile.avatarUrl ?? '')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setAvatarError('A imagem deve ter no máximo 10MB.')
+      event.target.value = ''
       setAvatarObjectUrl('')
       setAvatarPreview(profile.avatarUrl ?? '')
       return
@@ -149,7 +158,8 @@ function EditForm({
                 onChange={changeAvatar}
                 className="block w-full text-sm text-slate-300 file:mr-3 file:rounded-full file:border-0 file:bg-violet-500 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-violet-400"
               />
-              <span className="mt-1 block text-xs text-slate-500">PNG, JPG, WEBP ou GIF até 3MB.</span>
+              <span className="mt-1 block text-xs text-slate-500">PNG, JPG, WEBP ou GIF até 10MB.</span>
+              {avatarError && <span className="mt-1 block text-xs text-red-400">{avatarError}</span>}
             </div>
           </div>
           <input type="hidden" name="avatarUrl" value={profile.avatarUrl ?? ''} />
