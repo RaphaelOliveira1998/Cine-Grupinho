@@ -12,7 +12,7 @@ const client = globalForDb.client ?? postgres(connectionString, {
   prepare: false,
   max: isProduction ? 1 : 5,
   idle_timeout: 20,
-  ssl: isProduction ? 'require' : false,
+  ssl: connectionString.includes('sslmode=require') ? 'require' : (isProduction ? 'require' : false),
 })
 
 if (!isProduction) globalForDb.client = client
