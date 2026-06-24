@@ -4,10 +4,17 @@ import * as schema from './schema'
 
 const connectionString = process.env.DATABASE_URL || 'postgres://postgres:postgres@127.0.0.1:5432/postgres'
 
+const isProduction = process.env.NODE_ENV === 'production'
+
 const globalForDb = globalThis as unknown as { client?: ReturnType<typeof postgres> }
 
-const client = globalForDb.client ?? postgres(connectionString, { prepare: false, max: 5, idle_timeout: 20 })
+const client = globalForDb.client ?? postgres(connectionString, {
+  prepare: false,
+  max: isProduction ? 1 : 5,
+  idle_timeout: 20,
+  ssl: isProduction ? 'require' : false,
+})
 
-if (process.env.NODE_ENV !== 'production') globalForDb.client = client
+if (!isProduction) globalForDb.client = client
 
 export const db = drizzle(client, { schema })
