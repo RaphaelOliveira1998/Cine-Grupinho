@@ -30,7 +30,7 @@ export function AuthForm({ mode }: AuthFormProps) {
     if (forgotPassword) {
       const supabase = createClient()
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/login`
+        redirectTo: `${window.location.origin}/auth/confirm?next=/login`
       })
       setLoading(false)
       if (resetError) { setError(resetError.message); return }
@@ -53,7 +53,7 @@ export function AuthForm({ mode }: AuthFormProps) {
     const supabase = createClient()
     const result = mode === 'login'
       ? await supabase.auth.signInWithPassword({ email, password })
-      : await supabase.auth.signUp({ email, password, options: { data: { name } } })
+      : await supabase.auth.signUp({ email, password, options: { data: { name }, emailRedirectTo: `${window.location.origin}/auth/confirm` } })
     setLoading(false)
     if (result.error) {
       setError(result.error.message)
