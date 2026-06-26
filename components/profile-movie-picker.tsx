@@ -91,7 +91,7 @@ export function ProfileMoviePicker({ name, username, avatarUrl }: ProfileMoviePi
             </div>
             <div className="min-w-0 flex-1">
               <input name="avatarFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={changeAvatar} className="block w-full text-sm text-slate-300 file:mr-4 file:rounded-full file:border-0 file:bg-violet-500 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-violet-400" />
-              <span className="mt-2 block text-xs text-slate-500">PNG, JPG, WEBP ou GIF até 3MB.</span>
+              <span className="mt-2 block text-xs text-slate-500">PNG, JPG, WEBP ou GIF até 10MB.</span>
             </div>
           </div>
         </label>

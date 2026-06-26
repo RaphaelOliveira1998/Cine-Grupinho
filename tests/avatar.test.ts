@@ -12,9 +12,9 @@ describe('avatar upload helpers', () => {
     expect(avatarFileError(file)).toBe('Envie uma imagem PNG, JPG, WEBP ou GIF.')
   })
 
-  it('rejects files over 3MB', () => {
-    const big = new File([new Uint8Array(3 * 1024 * 1024 + 1)], 'big.jpg', { type: 'image/jpeg' })
-    expect(avatarFileError(big)).toBe('A imagem precisa ter no máximo 3MB.')
+  it('rejects files over 10MB', () => {
+    const big = new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'big.jpg', { type: 'image/jpeg' })
+    expect(avatarFileError(big)).toBe('A imagem precisa ter no máximo 10MB.')
   })
 
   it('returns null for an empty file (no upload)', () => {
