@@ -5,12 +5,12 @@ const allowedAvatarTypes = new Map([
   ['image/gif', 'gif']
 ])
 
-const maxAvatarBytes = 3 * 1024 * 1024
+const maxAvatarBytes = 10 * 1024 * 1024
 
 export function avatarFileError(file: File) {
   if (!file || file.size === 0) return null
   if (!allowedAvatarTypes.has(file.type)) return 'Envie uma imagem PNG, JPG, WEBP ou GIF.'
-  if (file.size > maxAvatarBytes) return 'A imagem precisa ter no máximo 3MB.'
+  if (file.size > maxAvatarBytes) return 'A imagem precisa ter no máximo 10MB.'
   return null
 }
 
