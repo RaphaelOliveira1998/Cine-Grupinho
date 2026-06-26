@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function getCurrentUser() {
   const supabase = await createClient()
-  const { data } = await supabase.auth.getUser()
+  const { data } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }))
   return data.user
 }
 
