@@ -8,6 +8,7 @@ import {
   commentSchema,
   searchSchema,
   ratingSchema,
+  profileSchema,
 } from '@/lib/validators'
 
 describe('loginSchema', () => {
@@ -130,5 +131,94 @@ describe('searchSchema', () => {
 
   it('rejects query longer than 120 chars', () => {
     expect(() => searchSchema.parse({ q: 'a'.repeat(121) })).toThrow()
+  })
+})
+
+// ─── profileSchema ────────────────────────────────────────────────────────────
+
+function validProfile(overrides: object = {}) {
+  return { name: 'Beatriz Moretti', username: 'beatriz', favoriteTmdbIds: [], ...overrides }
+}
+
+describe('profileSchema — username format', () => {
+  it('accepts lowercase letters only', () => {
+    expect(profileSchema.parse(validProfile({ username: 'beatriz' })).username).toBe('beatriz')
+  })
+
+  it('accepts lowercase letters, numbers and underscore', () => {
+    expect(profileSchema.parse(validProfile({ username: 'beatriz_m2' })).username).toBe('beatriz_m2')
+  })
+
+  it('lowercases automatically', () => {
+    expect(profileSchema.parse(validProfile({ username: 'Rapho' })).username).toBe('rapho')
+  })
+
+  it('trims surrounding whitespace before validating', () => {
+    expect(profileSchema.parse(validProfile({ username: '  rapho  ' })).username).toBe('rapho')
+  })
+
+  it('rejects username with an internal space', () => {
+    expect(() => profileSchema.parse(validProfile({ username: 'beatriz moretti' }))).toThrow()
+  })
+
+  it('rejects username with a hyphen', () => {
+    expect(() => profileSchema.parse(validProfile({ username: 'beatriz-m' }))).toThrow()
+  })
+
+  it('rejects username with special characters', () => {
+    expect(() => profileSchema.parse(validProfile({ username: 'beatriz@m' }))).toThrow()
+  })
+
+  it('rejects username with accented characters', () => {
+    expect(() => profileSchema.parse(validProfile({ username: 'ráfael' }))).toThrow()
+  })
+
+  it('rejects username shorter than 3 characters', () => {
+    expect(() => profileSchema.parse(validProfile({ username: 'ab' }))).toThrow()
+  })
+
+  it('rejects username longer than 24 characters', () => {
+    expect(() => profileSchema.parse(validProfile({ username: 'a'.repeat(25) }))).toThrow()
+  })
+
+  it('accepts username with exactly 3 characters', () => {
+    expect(profileSchema.parse(validProfile({ username: 'abc' })).username).toBe('abc')
+  })
+
+  it('accepts username with exactly 24 characters', () => {
+    expect(profileSchema.parse(validProfile({ username: 'a'.repeat(24) })).username).toBe('a'.repeat(24))
+  })
+})
+
+describe('profileSchema — name', () => {
+  it('accepts a normal full name', () => {
+    expect(profileSchema.parse(validProfile({ name: 'Beatriz Moretti Andrade' })).name).toBe('Beatriz Moretti Andrade')
+  })
+
+  it('rejects name shorter than 2 characters', () => {
+    expect(() => profileSchema.parse(validProfile({ name: 'A' }))).toThrow()
+  })
+
+  it('rejects name longer than 80 characters', () => {
+    expect(() => profileSchema.parse(validProfile({ name: 'A'.repeat(81) }))).toThrow()
+  })
+})
+
+describe('profileSchema — favoriteTmdbIds', () => {
+  it('accepts an empty list', () => {
+    expect(profileSchema.parse(validProfile({ favoriteTmdbIds: [] })).favoriteTmdbIds).toHaveLength(0)
+  })
+
+  it('accepts up to 5 movies', () => {
+    expect(profileSchema.parse(validProfile({ favoriteTmdbIds: [1, 2, 3, 4, 5] })).favoriteTmdbIds).toHaveLength(5)
+  })
+
+  it('rejects more than 5 movies', () => {
+    expect(() => profileSchema.parse(validProfile({ favoriteTmdbIds: [1, 2, 3, 4, 5, 6] }))).toThrow()
+  })
+
+  it('coerces string IDs to numbers (HTML form behaviour)', () => {
+    const result = profileSchema.parse(validProfile({ favoriteTmdbIds: ['550', '27205'] }))
+    expect(result.favoriteTmdbIds).toEqual([550, 27205])
   })
 })
