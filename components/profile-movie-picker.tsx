@@ -30,6 +30,7 @@ export function ProfileMoviePicker({ name, username, avatarUrl }: ProfileMoviePi
   const [searchedQuery, setSearchedQuery] = useState('')
   const [avatarPreview, setAvatarPreview] = useState(avatarUrl)
   const [avatarObjectUrl, setAvatarObjectUrl] = useState('')
+  const [avatarError, setAvatarError] = useState('')
   const [visibleCount, setVisibleCount] = useState(5)
 
   useEffect(() => {
@@ -41,7 +42,15 @@ export function ProfileMoviePicker({ name, username, avatarUrl }: ProfileMoviePi
   function changeAvatar(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (avatarObjectUrl) URL.revokeObjectURL(avatarObjectUrl)
+    setAvatarError('')
     if (!file) {
+      setAvatarObjectUrl('')
+      setAvatarPreview(avatarUrl)
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setAvatarError('A imagem precisa ter no máximo 10MB.')
+      event.target.value = ''
       setAvatarObjectUrl('')
       setAvatarPreview(avatarUrl)
       return
@@ -82,7 +91,7 @@ export function ProfileMoviePicker({ name, username, avatarUrl }: ProfileMoviePi
     <form action={updateProfileAction} className="space-y-6">
       <section className="grid gap-4 rounded-3xl border border-white/10 bg-white/[0.04] p-6 md:grid-cols-3">
         <Input name="name" defaultValue={name} placeholder="Nome" required minLength={2} />
-        <Input name="username" defaultValue={username} placeholder="username" required minLength={3} maxLength={24} />
+        <Input name="username" defaultValue={username} placeholder="username" required minLength={3} maxLength={24} pattern="[a-z0-9_]+" title="Apenas letras minúsculas, números e underscore (ex: beatriz_m)" />
         <label className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-300">
           <span className="block text-xs uppercase tracking-[0.2em] text-violet-300">Foto</span>
           <div className="mt-3 flex items-center gap-4">
@@ -91,7 +100,10 @@ export function ProfileMoviePicker({ name, username, avatarUrl }: ProfileMoviePi
             </div>
             <div className="min-w-0 flex-1">
               <input name="avatarFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={changeAvatar} className="block w-full text-sm text-slate-300 file:mr-4 file:rounded-full file:border-0 file:bg-violet-500 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-violet-400" />
-              <span className="mt-2 block text-xs text-slate-500">PNG, JPG, WEBP ou GIF até 10MB.</span>
+              {avatarError
+                ? <span className="mt-2 block text-xs text-red-400">{avatarError}</span>
+                : <span className="mt-2 block text-xs text-slate-500">PNG, JPG, WEBP ou GIF até 10MB.</span>
+              }
             </div>
           </div>
         </label>

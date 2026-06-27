@@ -77,28 +77,40 @@ async function upsertMovieFromTmdb(tmdbId: number) {
 
 export async function updateProfileAction(formData: FormData) {
   const user = await requireUser()
-  const rawAvatarFile = formData.get('avatarFile')
-  const avatarFile = rawAvatarFile instanceof File ? rawAvatarFile : null
-  const uploadedAvatarUrl = await uploadAvatar(user.id, avatarFile)
-  const parsed = profileSchema.parse({
-    name: value(formData, 'name'),
-    username: value(formData, 'username'),
-    avatarUrl: uploadedAvatarUrl || value(formData, 'avatarUrl'),
-    favoriteTmdbIds: values(formData, 'favoriteTmdbIds')
-  })
-  await db.update(profiles).set({
-    name: parsed.name,
-    username: parsed.username,
-    avatarUrl: parsed.avatarUrl || null
-  }).where(eq(profiles.id, user.id))
-  await db.delete(profileFavoriteMovies).where(eq(profileFavoriteMovies.userId, user.id))
-  const favoriteMovies = await Promise.all(parsed.favoriteTmdbIds.map((tmdbId) => upsertMovieFromTmdb(tmdbId)))
-  if (favoriteMovies.length > 0) {
-    await db.insert(profileFavoriteMovies).values(favoriteMovies.map((movie, index) => ({
-      userId: user.id,
-      movieId: movie.id,
-      position: index + 1
-    })))
+  let parsed: ReturnType<typeof profileSchema.parse>
+  try {
+    const rawAvatarFile = formData.get('avatarFile')
+    const avatarFile = rawAvatarFile instanceof File ? rawAvatarFile : null
+    const uploadedAvatarUrl = await uploadAvatar(user.id, avatarFile)
+    parsed = profileSchema.parse({
+      name: value(formData, 'name'),
+      username: value(formData, 'username'),
+      avatarUrl: uploadedAvatarUrl || value(formData, 'avatarUrl'),
+      favoriteTmdbIds: values(formData, 'favoriteTmdbIds')
+    })
+    await db.update(profiles).set({
+      name: parsed.name,
+      username: parsed.username,
+      avatarUrl: parsed.avatarUrl || null
+    }).where(eq(profiles.id, user.id))
+    await db.delete(profileFavoriteMovies).where(eq(profileFavoriteMovies.userId, user.id))
+    const favoriteMovies = await Promise.all(parsed.favoriteTmdbIds.map((tmdbId) => upsertMovieFromTmdb(tmdbId)))
+    if (favoriteMovies.length > 0) {
+      await db.insert(profileFavoriteMovies).values(favoriteMovies.map((movie, index) => ({
+        userId: user.id,
+        movieId: movie.id,
+        position: index + 1
+      })))
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Erro ao salvar perfil'
+    const isUsernameError = message.toLowerCase().includes('username') || message.toLowerCase().includes('invalid')
+    const hint = isUsernameError
+      ? 'Username inválido. Use apenas letras minúsculas, números e underscore (3–24 caracteres).'
+      : message.includes('unique') || message.includes('duplicate')
+        ? 'Esse username já está em uso. Escolha outro.'
+        : message
+    redirect(`/profile/setup?error=${encodeURIComponent(hint)}`)
   }
   revalidatePath('/dashboard')
   revalidatePath(`/profile/${parsed.username}`)
