@@ -7,9 +7,13 @@ import { eq } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
 
-export default async function ProfileSetupPage() {
+export default async function ProfileSetupPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const user = await requireUser()
-  const profile = await db.query.profiles.findFirst({ where: eq(profiles.id, user.id) })
+  const [profile, params] = await Promise.all([
+    db.query.profiles.findFirst({ where: eq(profiles.id, user.id) }),
+    searchParams
+  ])
+  const errorMessage = params.error ? decodeURIComponent(params.error) : null
   return (
     <AppShell>
       <div className="mx-auto max-w-6xl space-y-8">
@@ -18,6 +22,11 @@ export default async function ProfileSetupPage() {
           <h1 className="mt-2 text-4xl font-bold text-white">Configure seu perfil</h1>
           <p className="mt-2 max-w-2xl text-slate-400">Antes de entrar no dashboard, defina username e foto. Filmes favoritos são opcionais.</p>
         </div>
+        {errorMessage && (
+          <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            {errorMessage}
+          </div>
+        )}
         <ProfileMoviePicker name={profile?.name || user.email?.split('@')[0] || ''} username={profile?.username || ''} avatarUrl={profile?.avatarUrl || ''} />
       </div>
     </AppShell>
