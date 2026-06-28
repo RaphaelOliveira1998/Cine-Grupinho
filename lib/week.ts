@@ -1,9 +1,12 @@
 // Weekly cycle time helpers for Beckflix.
-// A "week" runs Monday 00:00 BRT (America/Sao_Paulo, fixed UTC-3) to the next
-// Monday 00:00 BRT. Brazil has no daylight saving since 2019, so UTC-3 is constant.
+// A "week" starts Monday 00:00 BRT (America/Sao_Paulo, fixed UTC-3).
+// A cycle's active window closes at Sunday 19:00 BRT (6 days + 19 hours after
+// the Monday start). Brazil has no daylight saving since 2019, so UTC-3 is constant.
 
 const BRT_OFFSET_MS = 3 * 60 * 60 * 1000 // UTC-3
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000
+// Mon 00:00 BRT → Sun 19:00 BRT = 6 days + 19 hours
+const WEEK_ACTIVE_MS = (6 * 24 + 19) * 60 * 60 * 1000
 
 /**
  * Returns the start of the current week (Monday 00:00 BRT) as a UTC Date,
@@ -28,16 +31,15 @@ export function currentWeekStart(now: Date = new Date()): Date {
 }
 
 /**
- * Returns the end of the week (exclusive) for a given week start:
- * the next Monday 00:00 BRT.
+ * Returns the end of the active window for a given week start:
+ * Sunday 19:00 BRT (6 days and 19 hours after Monday 00:00 BRT).
  */
 export function weekEnd(weekStart: Date): Date {
-  return new Date(weekStart.getTime() + WEEK_MS)
+  return new Date(weekStart.getTime() + WEEK_ACTIVE_MS)
 }
 
 /**
- * Returns the rating deadline for a cycle: end of Sunday BRT,
- * i.e. the same instant as the next week start (Monday 00:00 BRT).
+ * Returns the rating deadline for a cycle: Sunday 19:00 BRT.
  */
 export function ratingDeadline(weekStart: Date): Date {
   return weekEnd(weekStart)
