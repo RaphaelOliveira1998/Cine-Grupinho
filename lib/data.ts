@@ -160,12 +160,37 @@ export async function getRecommendationComments(recommendationId: string) {
     createdAt: comments.createdAt,
     authorName: profiles.name,
     authorUsername: profiles.username,
-    avatarUrl: profiles.avatarUrl
+    avatarUrl: profiles.avatarUrl,
+    authorRating: ratings.stars
   })
     .from(comments)
     .innerJoin(profiles, eq(comments.userId, profiles.id))
+    .leftJoin(ratings, and(
+      eq(ratings.recommendationId, comments.recommendationId),
+      eq(ratings.userId, comments.userId)
+    ))
     .where(eq(comments.recommendationId, recommendationId))
     .orderBy(desc(comments.createdAt))
+}
+
+export async function getRecommendationMemberRatings(groupId: string, recommendationId: string) {
+  return db.select({
+    userId: profiles.id,
+    name: profiles.name,
+    username: profiles.username,
+    avatarUrl: profiles.avatarUrl,
+    role: groupMembers.role,
+    stars: ratings.stars,
+    ratedAt: ratings.updatedAt
+  })
+    .from(groupMembers)
+    .innerJoin(profiles, eq(groupMembers.userId, profiles.id))
+    .leftJoin(ratings, and(
+      eq(ratings.recommendationId, recommendationId),
+      eq(ratings.userId, groupMembers.userId)
+    ))
+    .where(eq(groupMembers.groupId, groupId))
+    .orderBy(desc(ratings.updatedAt), desc(groupMembers.createdAt))
 }
 
 /**

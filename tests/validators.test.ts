@@ -6,6 +6,7 @@ import {
   updateGroupSchema,
   joinGroupSchema,
   commentSchema,
+  COMMENT_MAX_LENGTH,
   searchSchema,
   ratingSchema,
   profileSchema,
@@ -115,8 +116,12 @@ describe('commentSchema', () => {
     expect(() => commentSchema.parse({ body: '' })).toThrow()
   })
 
-  it('rejects body longer than 1000 chars', () => {
-    expect(() => commentSchema.parse({ body: 'x'.repeat(1001) })).toThrow()
+  it('accepts body up to 5000 chars', () => {
+    expect(() => commentSchema.parse({ body: 'x'.repeat(COMMENT_MAX_LENGTH) })).not.toThrow()
+  })
+
+  it('rejects body longer than 5000 chars', () => {
+    expect(() => commentSchema.parse({ body: 'x'.repeat(COMMENT_MAX_LENGTH + 1) })).toThrow()
   })
 })
 

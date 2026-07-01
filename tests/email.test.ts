@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const sendMock = vi.fn(async () => ({ data: { id: 'email-id' }, error: null }))
 

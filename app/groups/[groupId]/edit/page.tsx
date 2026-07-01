@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { Button, SubmitButton } from '@/components/button'
+import { SubmitButton } from '@/components/button'
 import { Input, Textarea } from '@/components/input'
 import { AppShell } from '@/components/shell'
 import { updateGroupAction } from '@/lib/actions'

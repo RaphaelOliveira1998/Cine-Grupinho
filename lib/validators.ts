@@ -30,8 +30,10 @@ export const ratingSchema = z.object({
   stars: z.coerce.number().int().min(1).max(5)
 })
 
+export const COMMENT_MAX_LENGTH = 5000
+
 export const commentSchema = z.object({
-  body: z.string().min(1).max(1000)
+  body: z.string().min(1).max(COMMENT_MAX_LENGTH)
 })
 
 export const searchSchema = z.object({
