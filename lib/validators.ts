@@ -36,6 +36,12 @@ export const commentSchema = z.object({
   body: z.string().min(1).max(COMMENT_MAX_LENGTH)
 })
 
+export const updateCommentSchema = commentSchema.extend({
+  commentId: z.string().uuid(),
+  recommendationId: z.string().uuid(),
+  groupId: z.string().uuid()
+})
+
 export const searchSchema = z.object({
   q: z.string().min(1).max(120)
 })

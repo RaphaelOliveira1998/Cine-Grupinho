@@ -6,6 +6,7 @@ import {
   updateGroupSchema,
   joinGroupSchema,
   commentSchema,
+  updateCommentSchema,
   COMMENT_MAX_LENGTH,
   searchSchema,
   ratingSchema,
@@ -122,6 +123,28 @@ describe('commentSchema', () => {
 
   it('rejects body longer than 5000 chars', () => {
     expect(() => commentSchema.parse({ body: 'x'.repeat(COMMENT_MAX_LENGTH + 1) })).toThrow()
+  })
+})
+
+describe('updateCommentSchema', () => {
+  const validUuid = '00000000-0000-4000-8000-000000000000'
+
+  it('accepts own comment edit payload shape', () => {
+    expect(() => updateCommentSchema.parse({
+      body: 'Comentário editado',
+      commentId: validUuid,
+      recommendationId: validUuid,
+      groupId: validUuid,
+    })).not.toThrow()
+  })
+
+  it('rejects invalid comment id', () => {
+    expect(() => updateCommentSchema.parse({
+      body: 'Comentário editado',
+      commentId: 'invalid',
+      recommendationId: validUuid,
+      groupId: validUuid,
+    })).toThrow()
   })
 })
 

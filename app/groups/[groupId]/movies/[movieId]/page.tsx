@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { SubmitButton } from '@/components/button'
 import { Textarea } from '@/components/input'
 import { AppShell } from '@/components/shell'
-import { addCommentAction, rateMovieAction } from '@/lib/actions'
+import { addCommentAction, rateMovieAction, updateCommentAction } from '@/lib/actions'
 import { requireCompletedProfile } from '@/lib/auth'
 import { getGroupForMember, getRecommendationComments, getRecommendationDetail, getRecommendationMemberRatings } from '@/lib/data'
 import { COMMENT_MAX_LENGTH } from '@/lib/validators'
@@ -128,6 +128,18 @@ export default async function MoviePage({ params }: { params: Promise<{ groupId:
                     <span className="shrink-0 text-slate-500">{formatDate(comment.createdAt.toISOString())}</span>
                   </div>
                   <p className="mt-2 whitespace-pre-wrap text-slate-300">{comment.body}</p>
+                  {comment.userId === user.id && (
+                    <details className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                      <summary className="cursor-pointer text-sm font-medium text-violet-200 hover:text-violet-100">Editar comentário</summary>
+                      <form action={updateCommentAction} className="mt-3 space-y-3">
+                        <input type="hidden" name="groupId" value={group.id} />
+                        <input type="hidden" name="recommendationId" value={movie.id} />
+                        <input type="hidden" name="commentId" value={comment.id} />
+                        <Textarea name="body" defaultValue={comment.body} rows={3} required maxLength={COMMENT_MAX_LENGTH} />
+                        <SubmitButton pendingLabel="Salvando...">Salvar edição</SubmitButton>
+                      </form>
+                    </details>
+                  )}
                 </div>
               ))}
               {comments.length === 0 && <p className="text-sm text-slate-400">Ninguém comentou. Civilização ainda em silêncio.</p>}

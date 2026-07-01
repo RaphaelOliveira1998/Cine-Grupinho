@@ -158,6 +158,7 @@ export async function getRecommendationComments(recommendationId: string) {
     id: comments.id,
     body: comments.body,
     createdAt: comments.createdAt,
+    userId: comments.userId,
     authorName: profiles.name,
     authorUsername: profiles.username,
     avatarUrl: profiles.avatarUrl,

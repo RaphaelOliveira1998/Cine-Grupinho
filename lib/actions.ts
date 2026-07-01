@@ -8,7 +8,7 @@ import { comments, groupMembers, groups, movies, profileFavoriteMovies, profiles
 import { createInviteCode } from '@/lib/invite'
 import { getMovieDetails } from '@/lib/tmdb'
 import { requireUser } from '@/lib/auth'
-import { commentSchema, groupSchema, joinGroupSchema, profileSchema, ratingSchema, chooseWeeklyMovieSchema, updateGroupSchema } from '@/lib/validators'
+import { commentSchema, groupSchema, joinGroupSchema, profileSchema, ratingSchema, chooseWeeklyMovieSchema, updateCommentSchema, updateGroupSchema } from '@/lib/validators'
 import { getOrCreateCurrentCycle, getCycleForRecommendation, isGroupMember } from '@/lib/data'
 import { avatarFileError, avatarStoragePath, hasAvatarUpload } from '@/lib/avatar'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -365,4 +365,40 @@ export async function addCommentAction(formData: FormData) {
   if (!activeCycle || activeCycle.id !== cycle.id) throw new Error('A semana de avaliação deste filme já encerrou')
   await db.insert(comments).values({ recommendationId, userId: user.id, body: parsed.body })
   revalidatePath(`/groups/${groupId}/movies/${recommendationId}`)
+}
+
+export async function updateCommentAction(formData: FormData) {
+  const user = await requireUser()
+  const parsed = updateCommentSchema.parse({
+    body: value(formData, 'body'),
+    commentId: value(formData, 'commentId'),
+    recommendationId: value(formData, 'recommendationId'),
+    groupId: value(formData, 'groupId')
+  })
+  const member = await isGroupMember(parsed.groupId, user.id)
+  if (!member) throw new Error('Acesso negado')
+
+  const existing = await db.select({ id: comments.id })
+    .from(comments)
+    .innerJoin(recommendations, eq(comments.recommendationId, recommendations.id))
+    .where(and(
+      eq(comments.id, parsed.commentId),
+      eq(comments.userId, user.id),
+      eq(comments.recommendationId, parsed.recommendationId),
+      eq(recommendations.groupId, parsed.groupId)
+    ))
+    .limit(1)
+
+  if (!existing[0]) throw new Error('Comentário não encontrado')
+
+  const cycle = await getCycleForRecommendation(parsed.recommendationId)
+  if (!cycle) throw new Error('Este filme não está em votação')
+  const activeCycle = await getOrCreateCurrentCycle(parsed.groupId)
+  if (!activeCycle || activeCycle.id !== cycle.id) throw new Error('A semana de avaliação deste filme já encerrou')
+
+  await db.update(comments)
+    .set({ body: parsed.body })
+    .where(eq(comments.id, parsed.commentId))
+
+  revalidatePath(`/groups/${parsed.groupId}/movies/${parsed.recommendationId}`)
 }
